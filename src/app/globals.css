@@ -128,3 +128,10 @@
     @apply font-sans;
   }
 }
+
+/* Hide bottom nav while typing so keyboard doesn't trap the input */
+html.keyboard-open nav[data-bottom-nav] {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}

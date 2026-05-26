@@ -12,14 +12,14 @@ const steps = [
     title: "Tell the Life Agent your dream",
     description:
       'e.g. "I want to run a 5K" — it creates your goal, no form.',
-    href: "/agent",
+    href: "/#agent",
     icon: Sparkles,
   },
   {
     step: 2,
     title: "Ask for today’s quests",
     description: "Short tasks that earn XP toward that goal.",
-    href: "/agent",
+    href: "/#agent",
     icon: Sparkles,
   },
   {

@@ -1,5 +1,6 @@
 "use client";
 
+import { AiAgentChat } from "@/components/agent/ai-agent-chat";
 import { GettingStarted } from "@/components/dashboard/getting-started";
 import { LocationBanner } from "@/components/location/location-banner";
 import { ProgressRing } from "@/components/gamification/progress-ring";
@@ -14,7 +15,6 @@ import { cn } from "@/lib/utils";
 import {
   Flame,
   Scroll,
-  Sparkles,
   Target,
   Zap,
   ChevronRight,
@@ -45,7 +45,7 @@ export function DashboardHome() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-4">
       <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm">
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/5 blur-2xl pointer-events-none" />
         <div className="absolute -left-4 bottom-0 h-24 w-24 rounded-full bg-emerald-500/5 blur-2xl pointer-events-none" />
@@ -89,6 +89,8 @@ export function DashboardHome() {
         </div>
       </section>
 
+      <AiAgentChat variant="embedded" />
+
       <GettingStarted />
 
       <LocationBanner />
@@ -103,12 +105,12 @@ export function DashboardHome() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/agent">
+        <Link href="/goals">
           <Card className="hover:bg-muted/30 transition-colors h-full">
             <CardContent className="p-4">
-              <Sparkles className="h-5 w-5 text-primary mb-2" />
-              <p className="text-sm font-medium">AI Life Agent</p>
-              <p className="text-xs text-muted-foreground">Get personalized quests</p>
+              <Target className="h-5 w-5 text-primary mb-2" />
+              <p className="text-2xl font-semibold">{goals.length}</p>
+              <p className="text-xs text-muted-foreground">Life goals</p>
             </CardContent>
           </Card>
         </Link>
@@ -130,15 +132,15 @@ export function DashboardHome() {
             <div className="text-center py-6 text-sm text-muted-foreground">
               <Zap className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p>No active quests yet.</p>
-              <Link
-                href="/agent"
+              <a
+                href="#agent"
                 className={cn(
                   buttonVariants({ variant: "link", size: "sm" }),
                   "mt-1 inline-flex"
                 )}
               >
-                Ask your Life Agent
-              </Link>
+                Ask your Life Agent above
+              </a>
             </div>
           ) : (
             activeQuests.slice(0, 4).map((quest) => (

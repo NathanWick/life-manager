@@ -77,7 +77,7 @@ export function GoalsSection() {
               it&apos;ll create one for you. No form required.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <Link href="/agent" className={cn(buttonVariants())}>
+              <Link href="/#agent" className={cn(buttonVariants())}>
                 <Sparkles className="h-4 w-4 mr-1" />
                 Talk to Life Agent
               </Link>
