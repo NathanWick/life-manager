@@ -1,4 +1,5 @@
 import { questXpReward } from "@/lib/gamification";
+import { buildActionableQuest } from "@/lib/quest-resources";
 import type { AgentAction, ParsedCreateGoal } from "@/lib/agent-tools";
 import type { GoalCategory, GoalPriority, LifeGoal } from "@/types";
 
@@ -50,6 +51,8 @@ export function parseGoalFromMessage(message: string): ParsedCreateGoal | null {
   if (!trimmed) return null;
 
   const patterns = [
+    /(?:^|\n)(?:my\s+)?north\s*star\s+(?:is\s+)?(?:to\s+)?(.+)/i,
+    /(?:^|\n)(?:set|create|add)\s+(?:my\s+)?north\s*star\s*(?:to\s+|:)?\s*(.+)/i,
     /(?:^|\n)(?:please\s+)?(?:create|add|set|make)\s+(?:a\s+)?(?:new\s+)?goal(?:\s+to|\s+for|:)?\s*(.+)/i,
     /(?:^|\n)(?:my|a)\s+goal\s+is\s+(?:to\s+)?(.+)/i,
     /(?:^|\n)i\s+want\s+(?:a\s+)?(?:new\s+)?goal(?:\s+to|\s+for|:)?\s*(.+)/i,
@@ -95,6 +98,9 @@ export function parseGoalFromMessage(message: string): ParsedCreateGoal | null {
 }
 
 export function looksLikeGoalIntent(message: string): boolean {
+  if (/\bnorth\s*star\b/i.test(message) && !looksLikeQuestOnlyIntent(message)) {
+    return true;
+  }
   if (GOAL_INTENT.test(message)) return true;
   return (
     /\bi want to\b/i.test(message) ||
@@ -123,20 +129,25 @@ export function parseQuestsFromMessage(
   const count = countMatch ? Math.min(3, parseInt(countMatch[1], 10)) : 1;
 
   for (let i = 0; i < count; i++) {
-    const title = topGoal
-      ? `Today's step: ${topGoal.title}`
-      : "Quick win for today";
+    const topic = topGoal?.title ?? "today's focus";
+    const draft = buildActionableQuest(topic, {
+      goalTitle: topGoal?.title,
+      category: topGoal?.category,
+      questType: "daily",
+      difficulty: i === 0 ? "medium" : "easy",
+    });
     actions.push({
       type: "create_quest",
-      title: count > 1 ? `${title} (${i + 1})` : title,
-      description: topGoal
-        ? `15 focused minutes on "${topGoal.title}" — small progress counts.`
-        : "Pick one meaningful action you can finish in 15 minutes.",
-      questType: "daily",
-      difficulty: "easy",
-      estimatedMinutes: 15,
-      xpReward: questXpReward("easy", "daily"),
+      title: count > 1 ? `${draft.title} (${i + 1})` : draft.title,
+      description: draft.description,
+      questType: draft.questType,
+      difficulty: draft.difficulty,
+      estimatedMinutes: draft.estimatedMinutes,
+      xpReward: questXpReward(draft.difficulty, draft.questType),
       goalId: topGoal?.id,
+      actionSteps: draft.actionSteps,
+      resourceUrl: draft.resourceUrl,
+      resourceLabel: draft.resourceLabel,
       suggestedByAI: true,
     });
   }
@@ -144,13 +155,18 @@ export function parseQuestsFromMessage(
   if (lower.includes("week")) {
     actions.push({
       type: "create_quest",
-      title: topGoal ? `Weekly checkpoint: ${topGoal.title}` : "Weekly checkpoint",
-      description: "Set one measurable milestone and put it on your calendar.",
+      title: `Weekly checkpoint: ${topGoal?.title ?? "your goal"}`,
+      description: "Pick one measurable milestone and schedule it.",
       questType: "weekly",
       difficulty: "medium",
       estimatedMinutes: 30,
       xpReward: questXpReward("medium", "weekly"),
       goalId: topGoal?.id,
+      actionSteps: [
+        "Choose one number or outcome to hit this week.",
+        "Block 30 minutes on your calendar.",
+        "Tell one person your commitment.",
+      ],
       suggestedByAI: true,
     });
   }

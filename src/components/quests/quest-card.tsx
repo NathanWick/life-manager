@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   CheckCircle2,
   Clock,
+  ExternalLink,
+  ListChecks,
   MapPin,
   SkipForward,
   Sparkles,
@@ -91,6 +93,35 @@ export function QuestCard({
               {quest.title}
             </h3>
             <p className="text-sm text-muted-foreground">{quest.description}</p>
+
+            {quest.actionSteps && quest.actionSteps.length > 0 && (
+              <div className="rounded-lg bg-background/70 border border-border/50 p-2.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1">
+                  <ListChecks className="h-3 w-3" />
+                  Steps
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-xs text-foreground/90">
+                  {quest.actionSteps.map((step, i) => (
+                    <li key={i} className="leading-snug">
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {quest.resourceUrl && (
+              <a
+                href={quest.resourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary px-3 py-2 text-xs font-medium hover:bg-primary/15 transition-colors"
+              >
+                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                {quest.resourceLabel ?? "Open resource"}
+              </a>
+            )}
+
             {goalTitle && (
               <p className="text-xs text-muted-foreground">
                 Linked to: {goalTitle}

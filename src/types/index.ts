@@ -38,6 +38,11 @@ export interface Quest {
   goalId?: string;
   suggestedByAI?: boolean;
   locationContext?: string;
+  /** e.g. YouTube search or tutorial link */
+  resourceUrl?: string;
+  resourceLabel?: string;
+  /** Concrete steps to complete the quest */
+  actionSteps?: string[];
   createdAt: string;
   completedAt?: string;
 }

@@ -9,6 +9,7 @@ import {
   ChatCompletionMessage,
 } from "@/lib/agent-provider";
 import { generateFallbackReply } from "@/lib/ai-fallback";
+import { enrichQuestAction } from "@/lib/enrich-quest";
 import { enrichActionsFromNaturalLanguage } from "@/lib/parse-natural-language";
 import { LifeGoal, Quest } from "@/types";
 
@@ -95,10 +96,13 @@ export async function runLifeAgent(input: {
       const second = await chatCompletion({ messages, tools: true });
       allActions.push(...extractToolCalls(second.message, goalIdByTitle));
 
-      const merged = enrichActionsFromNaturalLanguage(
-        input.message,
-        input.goals,
-        dedupeActions(allActions)
+      const merged = enrichAllQuests(
+        enrichActionsFromNaturalLanguage(
+          input.message,
+          input.goals,
+          dedupeActions(allActions)
+        ),
+        input.goals
       );
       return {
         content:
@@ -110,10 +114,13 @@ export async function runLifeAgent(input: {
       };
     }
 
-    const merged = enrichActionsFromNaturalLanguage(
-      input.message,
-      input.goals,
-      dedupeActions(allActions)
+    const merged = enrichAllQuests(
+      enrichActionsFromNaturalLanguage(
+        input.message,
+        input.goals,
+        dedupeActions(allActions)
+      ),
+      input.goals
     );
     return {
       content:
@@ -149,6 +156,15 @@ function dedupeActions(actions: AgentAction[]): AgentAction[] {
     seen.add(key);
     return true;
   });
+}
+
+function enrichAllQuests(
+  actions: AgentAction[],
+  goals: LifeGoal[]
+): AgentAction[] {
+  return actions.map((a) =>
+    a.type === "create_quest" ? enrichQuestAction(a, goals) : a
+  );
 }
 
 function summarizeActions(actions: AgentAction[]): string | null {
@@ -190,8 +206,8 @@ function runFallback(input: {
   }
 
   for (const q of reply.suggestedQuests) {
-    actions.push({
-      type: "create_quest",
+    const base = {
+      type: "create_quest" as const,
       title: q.title,
       description: q.description,
       questType: q.type,
@@ -199,13 +215,17 @@ function runFallback(input: {
       estimatedMinutes: q.estimatedMinutes,
       xpReward: q.xpReward,
       goalId: q.goalId,
-      suggestedByAI: true,
-    });
+      actionSteps: q.actionSteps,
+      resourceUrl: q.resourceUrl,
+      resourceLabel: q.resourceLabel,
+      suggestedByAI: true as const,
+    };
+    actions.push(enrichQuestAction(base, input.goals));
   }
 
   return {
     content: reply.content.replace(/\*\*/g, ""),
-    actions,
+    actions: enrichAllQuests(actions, input.goals),
     provider: "local",
   };
 }

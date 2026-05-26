@@ -15,10 +15,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const STARTER_PROMPTS = [
-  "I want to get fitter and have more energy",
-  "Help me save $5,000 over the next year",
-  "Give me 2 quests for today",
-  "I'm feeling stuck — one small quest I can do in 10 minutes",
+  "My north star is to get a six pack",
+  "Give me 2 interesting quests for today with YouTube",
+  "I want to learn guitar this year",
+  "Give me an actionable quest for right now",
 ];
 
 export function AiAgentChat() {
@@ -129,10 +129,10 @@ export function AiAgentChat() {
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-4 text-sm text-muted-foreground space-y-3">
                 <p>
-                  Describe what you want in life — like texting a coach.
-                  I&apos;ll add <strong className="text-foreground">goals</strong>{" "}
-                  (long-term) and <strong className="text-foreground">quests</strong>{" "}
-                  (today/this week) automatically. You never need the goal form.
+                  Say your <strong className="text-foreground">north star</strong>{" "}
+                  or any life goal — I&apos;ll create it. Ask for{" "}
+                  <strong className="text-foreground">quests</strong> and get steps,
+                  YouTube links, and concrete actions. No forms.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {STARTER_PROMPTS.map((prompt) => (

@@ -19,6 +19,9 @@ type AddQuest = (quest: {
   xpReward: number;
   goalId?: string;
   suggestedByAI?: boolean;
+  actionSteps?: string[];
+  resourceUrl?: string;
+  resourceLabel?: string;
 }) => void;
 
 export function applyAgentActions(
@@ -48,6 +51,9 @@ export function applyAgentActions(
         estimatedMinutes: action.estimatedMinutes,
         xpReward: action.xpReward,
         goalId: action.goalId,
+        actionSteps: action.actionSteps,
+        resourceUrl: action.resourceUrl,
+        resourceLabel: action.resourceLabel,
         suggestedByAI: true,
       });
       applied.push({ type: "create_quest", title: action.title });

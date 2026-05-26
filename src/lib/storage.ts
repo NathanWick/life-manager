@@ -1,8 +1,23 @@
 import {
   DEFAULT_ACHIEVEMENTS,
   LifeQuestState,
+  Quest,
   STORAGE_KEY,
 } from "@/types";
+
+const LEGACY_QUEST_TITLES = new Set([
+  "define your north star",
+  "define your north star ",
+]);
+
+function sanitizeQuests(quests: Quest[]): Quest[] {
+  return quests.filter((q) => {
+    const title = q.title.toLowerCase().trim();
+    if (LEGACY_QUEST_TITLES.has(title)) return false;
+    if (q.description?.toLowerCase().includes("goals section")) return false;
+    return true;
+  });
+}
 
 export const initialState: LifeQuestState = {
   goals: [],
@@ -26,6 +41,7 @@ export function loadState(): LifeQuestState {
     return {
       ...initialState,
       ...parsed,
+      quests: sanitizeQuests(parsed.quests ?? []),
       achievements:
         parsed.achievements?.length > 0
           ? parsed.achievements

@@ -13,7 +13,7 @@ export const AGENT_TOOLS = [
     function: {
       name: "create_goal",
       description:
-        "Create a LONG-TERM life goal (north star): months/years horizon, tracked with progress %. Use when the user wants a new life direction, dream, or sustained outcome—not for one-off tasks.",
+        "Create a LONG-TERM life goal (north star): months/years horizon. Use when user describes a dream, north star, life direction, or says 'I want to…' for something big. NEVER create a quest that tells them to fill a form.",
       parameters: {
         type: "object",
         properties: {
@@ -55,7 +55,7 @@ export const AGENT_TOOLS = [
     function: {
       name: "create_quest",
       description:
-        "Create a SHORT-TERM quest: actionable today or this week, earns XP when completed. Use for concrete steps toward a goal—not for long-term ambitions.",
+        "Create a SHORT-TERM quest: specific actionable task for today/this week. Include concrete steps and a YouTube search link when learning, fitness, or how-to applies. Never tell user to 'go to Goals section'.",
       parameters: {
         type: "object",
         properties: {
@@ -66,8 +66,20 @@ export const AGENT_TOOLS = [
           estimatedMinutes: { type: "number" },
           goalTitle: {
             type: "string",
-            description:
-              "Title of an existing goal to link—must match a user goal",
+            description: "Existing goal title to link",
+          },
+          actionSteps: {
+            type: "array",
+            items: { type: "string" },
+            description: "2-4 concrete steps",
+          },
+          resourceUrl: {
+            type: "string",
+            description: "YouTube search URL or helpful link",
+          },
+          resourceLabel: {
+            type: "string",
+            description: "e.g. 'Watch on YouTube'",
           },
         },
         required: ["title", "description", "type", "difficulty", "estimatedMinutes"],
@@ -96,6 +108,9 @@ export interface ParsedCreateQuest {
   estimatedMinutes: number;
   xpReward: number;
   goalId?: string;
+  actionSteps?: string[];
+  resourceUrl?: string;
+  resourceLabel?: string;
   suggestedByAI: true;
 }
 
@@ -125,6 +140,9 @@ export function parseToolCall(
       const difficulty = args.difficulty as QuestDifficulty;
       const questType = args.type as QuestType;
       const goalTitle = args.goalTitle ? String(args.goalTitle) : undefined;
+      const actionSteps = Array.isArray(args.actionSteps)
+        ? args.actionSteps.map(String)
+        : undefined;
       return {
         type: "create_quest",
         title: String(args.title),
@@ -134,6 +152,9 @@ export function parseToolCall(
         estimatedMinutes: Number(args.estimatedMinutes) || 15,
         xpReward: questXpReward(difficulty, questType),
         goalId: goalTitle ? goalIdByTitle.get(goalTitle.toLowerCase()) : undefined,
+        actionSteps,
+        resourceUrl: args.resourceUrl ? String(args.resourceUrl) : undefined,
+        resourceLabel: args.resourceLabel ? String(args.resourceLabel) : undefined,
         suggestedByAI: true,
       };
     }
