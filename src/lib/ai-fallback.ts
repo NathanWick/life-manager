@@ -12,6 +12,13 @@ interface GenerateReplyInput {
 
 export function generateFallbackReply(input: GenerateReplyInput): {
   content: string;
+  suggestedGoals?: Array<{
+    title: string;
+    category: LifeGoal["category"];
+    priority: LifeGoal["priority"];
+    whyItMatters: string;
+    progress: number;
+  }>;
   suggestedQuests: Array<{
     title: string;
     description: string;
@@ -30,11 +37,11 @@ export function generateFallbackReply(input: GenerateReplyInput): {
     [];
 
   let content =
-    "I'm your Life Agent — here to help you turn big dreams into small, winnable quests. ";
+    "I'm your Life Agent. **Goals** are long-term; **quests** are short-term actions for today or this week. ";
 
   if (goals.length === 0) {
     content +=
-      "You haven't set any life goals yet. Head to **Goals** and add one or two that matter most. Then I can suggest daily quests tailored to you!";
+      "You don't have any life goals yet—tell me what you're working toward and I can help create a goal, then short quests to match.";
     suggestedQuests.push({
       title: "Define your north star",
       description:
@@ -122,7 +129,7 @@ export function generateFallbackReply(input: GenerateReplyInput): {
   }
 
   content +=
-    "\n\nTap **Add to quests** on any suggestion below, or ask me to break a specific goal into smaller steps!";
+    "\n\n(Set GROQ_API_KEY on Vercel for full tool calling—or add these quests from the Quests tab.)";
 
   return { content, suggestedQuests };
 }

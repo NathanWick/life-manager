@@ -42,7 +42,7 @@ export function QuestsSection() {
         <div>
           <h1 className="text-xl font-semibold">Quests</h1>
           <p className="text-sm text-muted-foreground">
-            {xp.toLocaleString()} XP · {streak} day streak
+            Short-term actions · {xp.toLocaleString()} XP · {streak}d streak
           </p>
         </div>
         <Link

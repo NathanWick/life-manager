@@ -50,12 +50,18 @@ export interface Achievement {
   unlockedAt?: string;
 }
 
+export interface AgentActionSummary {
+  type: "create_goal" | "create_quest";
+  title: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: string;
-  suggestedQuests?: Omit<Quest, "id" | "status" | "createdAt">[];
+  /** Actions the agent applied via tool calls */
+  appliedActions?: AgentActionSummary[];
 }
 
 export interface UserLocation {

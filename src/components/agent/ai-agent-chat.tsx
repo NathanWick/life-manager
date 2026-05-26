@@ -2,30 +2,35 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLifeQuest } from "@/hooks/use-lifequest";
+import { applyAgentActions } from "@/lib/apply-agent-actions";
+import type { AgentAction } from "@/lib/agent-tools";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2, Plus, Send, Sparkles, User } from "lucide-react";
+import { Loader2, Send, Sparkles, Target, Scroll, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const STARTER_PROMPTS = [
-  "I'm feeling overwhelmed — help me with one small win today",
-  "Break my top goal into daily quests this week",
-  "Suggest a location-based quest for right now",
-  "What should I focus on today?",
+  "I want a new life goal: get fitter and have more energy",
+  "Give me 2 short quests for today toward my top goal",
+  "I'm overwhelmed — one tiny quest I can finish in 10 minutes",
+  "What's the difference between adding a goal vs a quest?",
 ];
 
 export function AiAgentChat() {
   const {
     goals,
+    quests,
     streak,
     level,
     location,
     chatHistory,
     addChatMessage,
+    addGoal,
     addQuest,
     hydrated,
   } = useLifeQuest();
@@ -46,30 +51,52 @@ export function AiAgentChat() {
     setLoading(true);
 
     try {
+      const history = chatHistory.slice(-8).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
           goals,
+          quests,
           streak,
           level,
           location: location
             ? { latitude: location.latitude, longitude: location.longitude }
             : null,
+          history,
         }),
       });
+
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const actions = (data.actions ?? []) as AgentAction[];
+      const applied = applyAgentActions(actions, addGoal, addQuest);
+
+      if (applied.length > 0) {
+        const goalsN = applied.filter((a) => a.type === "create_goal").length;
+        const questsN = applied.filter((a) => a.type === "create_quest").length;
+        const parts: string[] = [];
+        if (goalsN) parts.push(`${goalsN} goal${goalsN > 1 ? "s" : ""}`);
+        if (questsN) parts.push(`${questsN} quest${questsN > 1 ? "s" : ""}`);
+        toast.success(`Added ${parts.join(" & ")}`);
+      }
+
       addChatMessage({
         role: "assistant",
-        content: data.content || "I'm here to help you on your quest!",
-        suggestedQuests: data.suggestedQuests,
+        content: data.content || "How can I help?",
+        appliedActions: applied.length > 0 ? applied : undefined,
       });
     } catch {
       addChatMessage({
         role: "assistant",
         content:
-          "I couldn't reach the server, but you've got this! Try setting a 5-minute micro-quest toward your top goal.",
+          "I couldn't reach the agent. Add GROQ_API_KEY on Vercel for a cheap AI, or try again.",
       });
     } finally {
       setLoading(false);
@@ -92,7 +119,7 @@ export function AiAgentChat() {
           AI Life Agent
         </h1>
         <p className="text-sm text-muted-foreground">
-          Encouraging coach · breaks big goals into daily wins
+          Goals = long-term · Quests = short-term actions (auto-created via tools)
         </p>
       </div>
 
@@ -100,11 +127,12 @@ export function AiAgentChat() {
         <div className="space-y-4 pb-4">
           {chatHistory.length === 0 && (
             <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-4 text-sm text-muted-foreground">
-                <p className="mb-3">
-                  Hey adventurer! I know your goals
-                  {location ? " and location" : ""} and can suggest quests that
-                  fit your life. Try a prompt below or ask anything.
+              <CardContent className="p-4 text-sm text-muted-foreground space-y-3">
+                <p>
+                  I use <strong className="text-foreground">tool calls</strong> to
+                  add things directly: <strong className="text-foreground">goals</strong>{" "}
+                  for big life directions, <strong className="text-foreground">quests</strong>{" "}
+                  for what you can do today or this week.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {STARTER_PROMPTS.map((prompt) => (
@@ -161,38 +189,24 @@ export function AiAgentChat() {
                 >
                   {msg.content}
                 </div>
-                {msg.suggestedQuests?.map((sq, i) => (
-                  <Card key={i} className="text-left">
-                    <CardContent className="p-3 space-y-2">
-                      <p className="text-sm font-medium">{sq.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {sq.description}
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        <Badge variant="outline" className="text-[10px] capitalize">
-                          {sq.type}
-                        </Badge>
-                        <Badge variant="secondary" className="text-[10px]">
-                          {sq.estimatedMinutes} min · +{sq.xpReward} XP
-                        </Badge>
-                      </div>
-                      <Button
-                        size="sm"
+                {msg.appliedActions && msg.appliedActions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {msg.appliedActions.map((a, i) => (
+                      <Badge
+                        key={i}
                         variant="secondary"
-                        className="w-full"
-                        onClick={() =>
-                          addQuest({
-                            ...sq,
-                            suggestedByAI: true,
-                          })
-                        }
+                        className="text-[10px] gap-1"
                       >
-                        <Plus className="h-3.5 w-3.5 mr-1" />
-                        Add to quests
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+                        {a.type === "create_goal" ? (
+                          <Target className="h-3 w-3" />
+                        ) : (
+                          <Scroll className="h-3 w-3" />
+                        )}
+                        {a.type === "create_goal" ? "Goal" : "Quest"}: {a.title}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -217,7 +231,7 @@ export function AiAgentChat() {
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask for quests, motivation, or a weekly plan…"
+          placeholder="e.g. Add a goal to learn guitar, or give me today's quests…"
           rows={2}
           className="resize-none min-h-[44px]"
           onKeyDown={(e) => {

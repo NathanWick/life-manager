@@ -52,7 +52,7 @@ export function GoalsSection() {
         <div>
           <h1 className="text-xl font-semibold">Life Goals</h1>
           <p className="text-sm text-muted-foreground">
-            Define what matters — quests follow from here
+            Long-term north stars — use Agent for short-term quests
           </p>
         </div>
         <Button

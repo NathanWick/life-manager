@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { PwaRegister } from "@/components/pwa-register";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -45,6 +46,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <PwaRegister />
+          <Toaster />
         </Providers>
       </body>
     </html>
