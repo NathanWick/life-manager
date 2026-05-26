@@ -2,23 +2,23 @@
 
 import { useLifeQuest } from "@/hooks/use-lifequest";
 import { Card, CardContent } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { MapPin, Sparkles, Target, ChevronRight } from "lucide-react";
+import { MapPin, Sparkles, ChevronRight } from "lucide-react";
 
 const steps = [
   {
     step: 1,
-    title: "Set a life goal",
-    description: "What matters most right now?",
-    href: "/goals",
-    icon: Target,
+    title: "Tell the Life Agent your dream",
+    description:
+      'e.g. "I want to run a 5K" — it creates your goal, no form.',
+    href: "/agent",
+    icon: Sparkles,
   },
   {
     step: 2,
-    title: "Talk to your Life Agent",
-    description: "Get daily quests tailored to you.",
+    title: "Ask for today’s quests",
+    description: "Short tasks that earn XP toward that goal.",
     href: "/agent",
     icon: Sparkles,
   },
@@ -41,9 +41,9 @@ export function GettingStarted() {
     <Card className="border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
       <CardContent className="p-4 space-y-4">
         <div>
-          <p className="text-sm font-semibold">Start your adventure</p>
+          <p className="text-sm font-semibold">Start in 30 seconds</p>
           <p className="text-xs text-muted-foreground mt-1">
-            You&apos;re at Level 1 — three quick steps to get momentum.
+            Just chat — goals and quests are created for you automatically.
           </p>
         </div>
         <ol className="space-y-2">

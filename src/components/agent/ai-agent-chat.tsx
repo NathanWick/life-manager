@@ -15,10 +15,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const STARTER_PROMPTS = [
-  "I want a new life goal: get fitter and have more energy",
-  "Give me 2 short quests for today toward my top goal",
-  "I'm overwhelmed — one tiny quest I can finish in 10 minutes",
-  "What's the difference between adding a goal vs a quest?",
+  "I want to get fitter and have more energy",
+  "Help me save $5,000 over the next year",
+  "Give me 2 quests for today",
+  "I'm feeling stuck — one small quest I can do in 10 minutes",
 ];
 
 export function AiAgentChat() {
@@ -119,7 +119,7 @@ export function AiAgentChat() {
           AI Life Agent
         </h1>
         <p className="text-sm text-muted-foreground">
-          Goals = long-term · Quests = short-term actions (auto-created via tools)
+          Just talk — I&apos;ll create goals &amp; quests for you. No forms.
         </p>
       </div>
 
@@ -129,10 +129,10 @@ export function AiAgentChat() {
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-4 text-sm text-muted-foreground space-y-3">
                 <p>
-                  I use <strong className="text-foreground">tool calls</strong> to
-                  add things directly: <strong className="text-foreground">goals</strong>{" "}
-                  for big life directions, <strong className="text-foreground">quests</strong>{" "}
-                  for what you can do today or this week.
+                  Describe what you want in life — like texting a coach.
+                  I&apos;ll add <strong className="text-foreground">goals</strong>{" "}
+                  (long-term) and <strong className="text-foreground">quests</strong>{" "}
+                  (today/this week) automatically. You never need the goal form.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {STARTER_PROMPTS.map((prompt) => (
@@ -231,7 +231,7 @@ export function AiAgentChat() {
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g. Add a goal to learn guitar, or give me today's quests…"
+          placeholder="I want to learn guitar and practice 20 min a day…"
           rows={2}
           className="resize-none min-h-[44px]"
           onKeyDown={(e) => {

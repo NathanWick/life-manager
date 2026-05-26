@@ -1,5 +1,11 @@
 import { getLocationSuggestions } from "@/lib/location-suggestions";
 import { questXpReward } from "@/lib/gamification";
+import {
+  parseGoalFromMessage,
+  parseQuestsFromMessage,
+  looksLikeGoalIntent,
+  looksLikeQuestOnlyIntent,
+} from "@/lib/parse-natural-language";
 import { LifeGoal, QuestType } from "@/types";
 
 interface GenerateReplyInput {
@@ -35,59 +41,132 @@ export function generateFallbackReply(input: GenerateReplyInput): {
   const lower = message.toLowerCase();
   const suggestedQuests: ReturnType<typeof generateFallbackReply>["suggestedQuests"] =
     [];
+  const suggestedGoals: NonNullable<
+    ReturnType<typeof generateFallbackReply>["suggestedGoals"]
+  > = [];
 
-  let content =
-    "I'm your Life Agent. **Goals** are long-term; **quests** are short-term actions for today or this week. ";
-
-  if (goals.length === 0) {
-    content +=
-      "You don't have any life goals yet—tell me what you're working toward and I can help create a goal, then short quests to match.";
-    suggestedQuests.push({
-      title: "Define your north star",
-      description:
-        "Write down one life goal and why it matters to you in the Goals section.",
-      type: "daily",
-      difficulty: "easy",
-      estimatedMinutes: 10,
-      xpReward: questXpReward("easy", "daily"),
-      suggestedByAI: true,
+  const parsedGoal = parseGoalFromMessage(message);
+  if (parsedGoal) {
+    suggestedGoals.push({
+      title: parsedGoal.title,
+      category: parsedGoal.category,
+      priority: parsedGoal.priority,
+      whyItMatters: parsedGoal.whyItMatters,
+      progress: 0,
     });
-    return { content, suggestedQuests };
   }
 
   const topGoal =
-    [...goals].sort((a, b) => {
-      const p = { high: 3, medium: 2, low: 1 };
-      return p[b.priority] - p[a.priority];
-    })[0];
+    goals[0] ??
+    (suggestedGoals[0]
+      ? ({
+          id: "__pending__",
+          title: suggestedGoals[0].title,
+          category: suggestedGoals[0].category,
+          priority: suggestedGoals[0].priority,
+          whyItMatters: suggestedGoals[0].whyItMatters,
+          progress: 0,
+          createdAt: "",
+          updatedAt: "",
+        } as LifeGoal)
+      : null);
+
+  if (parsedGoal) {
+    let content = `Done — I created your goal "${parsedGoal.title}" for you. No form needed.`;
+    if (looksLikeQuestOnlyIntent(message) || /\b(quest|today)\b/i.test(message)) {
+      const quests = parseQuestsFromMessage(message, topGoal ? [topGoal] : []);
+      for (const q of quests) {
+        if (q.type !== "create_quest") continue;
+        suggestedQuests.push({
+          title: q.title,
+          description: q.description,
+          type: q.questType,
+          difficulty: q.difficulty,
+          estimatedMinutes: q.estimatedMinutes,
+          xpReward: q.xpReward,
+          goalId: goals[0]?.id,
+          suggestedByAI: true,
+        });
+      }
+      if (quests.length > 0) {
+        content += ` I also added ${quests.length} quest${quests.length > 1 ? "s" : ""} to get you started.`;
+      }
+    } else {
+      content +=
+        " Want a couple of short quests for this week? Just say something like “give me 2 quests for today.”";
+    }
+    return { content, suggestedGoals, suggestedQuests };
+  }
+
+  if (goals.length === 0 && !looksLikeGoalIntent(message)) {
+    return {
+      content:
+        "Tell me what you're working toward in plain English — e.g. “I want to get fitter and have more energy” — and I'll create the goal for you automatically.",
+      suggestedQuests: [],
+    };
+  }
+
+  if (looksLikeQuestOnlyIntent(message) || /\d+\s*quest/i.test(message)) {
+    const quests = parseQuestsFromMessage(message, goals);
+    for (const q of quests) {
+      if (q.type !== "create_quest") continue;
+      suggestedQuests.push({
+        title: q.title,
+        description: q.description,
+        type: q.questType,
+        difficulty: q.difficulty,
+        estimatedMinutes: q.estimatedMinutes,
+        xpReward: q.xpReward,
+        goalId: q.goalId,
+        suggestedByAI: true,
+      });
+    }
+    return {
+      content:
+        quests.length > 0
+          ? `Added ${quests.length} short-term quest${quests.length > 1 ? "s" : ""} for you — check the Quests tab.`
+          : "Tell me what you'd like to accomplish today and I'll add quests for you.",
+      suggestedQuests,
+    };
+  }
+
+  if (!topGoal) {
+    return {
+      content:
+        "Describe a life goal in your own words and I'll add it — no forms required.",
+      suggestedQuests: [],
+    };
+  }
+
+  let content = "";
 
   if (lower.includes("overwhelm") || lower.includes("stuck") || lower.includes("hard")) {
-    content += `Feeling stuck is normal — you're at **Level ${level}** with a **${streak}-day streak**, which already shows commitment. Let's shrink "${topGoal.title}" into one tiny step you can finish today.`;
+    content = `You're at Level ${level} with a ${streak}-day streak — that counts. Here's a tiny quest for "${topGoal.title}".`;
     suggestedQuests.push({
       title: `5-minute step: ${topGoal.title}`,
-      description: `Do the smallest possible action toward "${topGoal.title}" — even 5 minutes counts.`,
+      description: `Smallest possible action toward "${topGoal.title}".`,
       type: "daily",
       difficulty: "easy",
       estimatedMinutes: 5,
       xpReward: questXpReward("easy", "daily"),
-      goalId: topGoal.id,
+      goalId: goals[0]?.id,
       suggestedByAI: true,
     });
   } else if (lower.includes("week") || lower.includes("plan")) {
-    content += `Here's a weekly plan angle for **${topGoal.category}** goal "${topGoal.title}" (${topGoal.progress}% done). Break it into 3 checkpoints this week.`;
+    content = `Weekly plan for "${topGoal.title}" (${goals[0]?.progress ?? 0}% done):`;
     suggestedQuests.push({
       title: `Weekly checkpoint: ${topGoal.title}`,
-      description: `Set one measurable milestone for "${topGoal.title}" and schedule it on your calendar.`,
+      description: `One measurable milestone for "${topGoal.title}" on your calendar.`,
       type: "weekly",
       difficulty: "medium",
       estimatedMinutes: 30,
       xpReward: questXpReward("medium", "weekly"),
-      goalId: topGoal.id,
+      goalId: goals[0]?.id,
       suggestedByAI: true,
     });
   } else if (hasLocation || lower.includes("near") || lower.includes("location")) {
     const loc = getLocationSuggestions()[0];
-    content += `${loc.message} Want to try a location-based quest?`;
+    content = `${loc.message}`;
     suggestedQuests.push({
       title: loc.questTitle,
       description: loc.questDescription,
@@ -96,40 +175,24 @@ export function generateFallbackReply(input: GenerateReplyInput): {
       estimatedMinutes: loc.estimatedMinutes,
       xpReward: questXpReward(loc.difficulty, "daily"),
       locationContext: loc.context,
-      goalId: topGoal.id,
+      goalId: goals[0]?.id,
       suggestedByAI: true,
     });
   } else {
-    content += `Based on your **${topGoal.category}** priority goal "${topGoal.title}" (${topGoal.progress}% complete), here's what I'd focus on today. Remember: ${topGoal.whyItMatters}`;
+    content = `Here's a focus for today on "${topGoal.title}".`;
     suggestedQuests.push({
       title: `Daily win: ${topGoal.title}`,
-      description: `Spend 15 focused minutes on "${topGoal.title}" — no perfection required.`,
+      description: `15 focused minutes on "${topGoal.title}".`,
       type: "daily",
       difficulty: "medium",
       estimatedMinutes: 15,
       xpReward: questXpReward("medium", "daily"),
-      goalId: topGoal.id,
+      goalId: goals[0]?.id,
       suggestedByAI: true,
     });
-    if (goals.length > 1) {
-      const second = goals.find((g) => g.id !== topGoal.id);
-      if (second) {
-        suggestedQuests.push({
-          title: `Bonus: ${second.title}`,
-          description: `Quick 10-minute touch on "${second.title}" to keep momentum.`,
-          type: "daily",
-          difficulty: "easy",
-          estimatedMinutes: 10,
-          xpReward: questXpReward("easy", "daily"),
-          goalId: second.id,
-          suggestedByAI: true,
-        });
-      }
-    }
   }
 
-  content +=
-    "\n\n(Set GROQ_API_KEY on Vercel for full tool calling—or add these quests from the Quests tab.)";
+  content += " (Added automatically — check Quests.)";
 
-  return { content, suggestedQuests };
+  return { content, suggestedGoals, suggestedQuests };
 }

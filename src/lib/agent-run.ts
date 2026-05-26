@@ -9,6 +9,7 @@ import {
   ChatCompletionMessage,
 } from "@/lib/agent-provider";
 import { generateFallbackReply } from "@/lib/ai-fallback";
+import { enrichActionsFromNaturalLanguage } from "@/lib/parse-natural-language";
 import { LifeGoal, Quest } from "@/types";
 
 export interface AgentRunResult {
@@ -94,22 +95,32 @@ export async function runLifeAgent(input: {
       const second = await chatCompletion({ messages, tools: true });
       allActions.push(...extractToolCalls(second.message, goalIdByTitle));
 
+      const merged = enrichActionsFromNaturalLanguage(
+        input.message,
+        input.goals,
+        dedupeActions(allActions)
+      );
       return {
         content:
           second.message.content?.trim() ||
-          summarizeActions(allActions) ||
-          "Done! Check your Goals and Quests tabs.",
-        actions: dedupeActions(allActions),
+          summarizeActions(merged) ||
+          "Done! I added that for you.",
+        actions: merged,
         provider: providerName(),
       };
     }
 
+    const merged = enrichActionsFromNaturalLanguage(
+      input.message,
+      input.goals,
+      dedupeActions(allActions)
+    );
     return {
       content:
         first.message.content?.trim() ||
-        summarizeActions(allActions) ||
+        summarizeActions(merged) ||
         "How can I help with your goals or quests today?",
-      actions: dedupeActions(allActions),
+      actions: merged,
       provider: providerName(),
     };
   } catch (e) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { GettingStarted } from "@/components/dashboard/getting-started";
 import { LocationBanner } from "@/components/location/location-banner";
 import { ProgressRing } from "@/components/gamification/progress-ring";
 import { AchievementsGrid } from "@/components/gamification/achievements-grid";
@@ -87,6 +88,8 @@ export function DashboardHome() {
           </div>
         </div>
       </section>
+
+      <GettingStarted />
 
       <LocationBanner />
 

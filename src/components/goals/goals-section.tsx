@@ -4,11 +4,12 @@ import { useState } from "react";
 import { GoalFormDialog } from "@/components/goals/goal-form-dialog";
 import { useLifeQuest } from "@/hooks/use-lifequest";
 import { LifeGoal } from "@/types";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Pencil, Trash2, Calendar } from "lucide-react";
+import Link from "next/link";
+import { Plus, Pencil, Trash2, Calendar, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const categoryColors: Record<string, string> = {
@@ -69,19 +70,28 @@ export function GoalsSection() {
 
       {sorted.length === 0 ? (
         <Card className="border-dashed">
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground text-sm mb-4">
-              No goals yet. Start with one meaningful north star.
+          <CardContent className="py-12 text-center space-y-4">
+            <p className="text-muted-foreground text-sm">
+              No goals yet. Tell your Life Agent in plain English — e.g.
+              &ldquo;I want to get fitter and have more energy&rdquo; — and
+              it&apos;ll create one for you. No form required.
             </p>
-            <Button
-              onClick={() => {
-                setEditing(null);
-                setDialogOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Create your first goal
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <Link href="/agent" className={cn(buttonVariants())}>
+                <Sparkles className="h-4 w-4 mr-1" />
+                Talk to Life Agent
+              </Link>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditing(null);
+                  setDialogOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add manually
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
