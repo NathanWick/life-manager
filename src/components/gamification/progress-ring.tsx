@@ -24,8 +24,14 @@ export function ProgressRing({
   const offset = circumference - (value / 100) * circumference;
 
   return (
-    <div className={cn("relative inline-flex items-center justify-center", className)}>
-      <svg width={size} height={size} className="-rotate-90">
+    <div
+      className={cn(
+        "relative inline-flex shrink-0 items-center justify-center",
+        className
+      )}
+      style={{ width: size, height: size }}
+    >
+      <svg width={size} height={size} className="-rotate-90 shrink-0">
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -48,13 +54,19 @@ export function ProgressRing({
           className="text-primary transition-all duration-700 ease-out"
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-2xl font-semibold tabular-nums">{value}%</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1">
+        <span className="text-lg sm:text-xl font-semibold tabular-nums leading-none">
+          {value}%
+        </span>
         {label && (
-          <span className="text-xs text-muted-foreground mt-0.5">{label}</span>
+          <span className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+            {label}
+          </span>
         )}
         {sublabel && (
-          <span className="text-[10px] text-muted-foreground">{sublabel}</span>
+          <span className="text-[9px] text-muted-foreground leading-tight">
+            {sublabel}
+          </span>
         )}
       </div>
     </div>
