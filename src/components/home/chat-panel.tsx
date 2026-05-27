@@ -68,7 +68,7 @@ export function ChatPanel() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
       const applied = applyAgentActions(
         (data.actions ?? []) as AgentAction[],
@@ -89,11 +89,12 @@ export function ChatPanel() {
         content: data.content || "Here to help!",
         appliedActions: applied.length ? applied : undefined,
       });
-    } catch {
+    } catch (err) {
+      const detail =
+        err instanceof Error ? err.message : "Unknown error";
       addChatMessage({
         role: "assistant",
-        content:
-          "Couldn't reach the agent. Add GROQ_API_KEY in Vercel (Settings → Environment Variables).",
+        content: `Agent error: ${detail}\n\nIf this mentions the API key: Vercel → life-manager → Settings → Environment Variables → add GROQ_API_KEY + GROQ_MODEL for Production, Preview, and Development, then Redeploy.`,
       });
     } finally {
       setLoading(false);
