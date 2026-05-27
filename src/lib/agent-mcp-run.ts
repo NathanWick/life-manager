@@ -1,7 +1,6 @@
 import {
   chatCompletion,
   ChatCompletionMessage,
-  buildSystemPrompt,
   resolveAgentProvider,
 } from "@/lib/agent-provider";
 import { enrichQuestAction } from "@/lib/enrich-quest";
