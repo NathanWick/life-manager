@@ -23,6 +23,7 @@ export function ChatPanel() {
     quests,
     streak,
     level,
+    xp,
     chatHistory,
     addChatMessage,
     addGoal,
@@ -58,6 +59,7 @@ export function ChatPanel() {
           quests,
           streak,
           level,
+          xp,
           location: null,
           history: chatHistory.slice(-8).map((m) => ({
             role: m.role,
@@ -90,7 +92,8 @@ export function ChatPanel() {
     } catch {
       addChatMessage({
         role: "assistant",
-        content: "Couldn't reach the agent. Check your API key on Vercel.",
+        content:
+          "Couldn't reach the agent. Add GROQ_API_KEY in Vercel (Settings → Environment Variables).",
       });
     } finally {
       setLoading(false);

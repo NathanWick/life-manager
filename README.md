@@ -16,9 +16,21 @@ npm install
 npm run dev
 ```
 
-## AI (recommended)
+## AI + MCP
+
+The Life Agent uses a **real LLM** (Groq/OpenAI/OpenRouter) with an in-app **MCP server** so it knows which tool to call:
+
+| MCP tool | When to use |
+|----------|-------------|
+| `create_north_star` | Long-term life goal / north star |
+| `create_quest` | Short-term task for today/this week |
+| `list_goals` | Read current goals before linking quests |
+| `list_active_quests` | Read active quests |
+| `get_life_stats` | Level, XP, streak |
 
 Add `GROQ_API_KEY` in Vercel or `.env.local` ([console.groq.com](https://console.groq.com/keys)).
+
+Optional: run the MCP server for Cursor via `npm run mcp` (see `.cursor/mcp.json`).
 
 ## Deploy
 

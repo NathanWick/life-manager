@@ -1,4 +1,5 @@
 import { AGENT_TOOLS } from "@/lib/agent-tools";
+import type { OpenAITool } from "@/mcp/mcp-bridge";
 import { LifeGoal, Quest } from "@/types";
 
 export type ChatRole = "system" | "user" | "assistant" | "tool";
@@ -109,7 +110,7 @@ Location: ${ctx.location ? `${ctx.location.latitude}, ${ctx.location.longitude}`
 
 export async function chatCompletion(params: {
   messages: ChatCompletionMessage[];
-  tools?: boolean;
+  tools?: boolean | OpenAITool[];
 }): Promise<{
   message: ChatCompletionMessage;
   finishReason: string;
@@ -127,7 +128,7 @@ export async function chatCompletion(params: {
   };
 
   if (params.tools) {
-    body.tools = AGENT_TOOLS;
+    body.tools = params.tools === true ? AGENT_TOOLS : params.tools;
     body.tool_choice = "auto";
   }
 

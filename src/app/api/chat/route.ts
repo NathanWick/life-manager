@@ -1,4 +1,4 @@
-import { runLifeAgent } from "@/lib/agent-run";
+import { runLifeAgentViaMcp } from "@/lib/agent-mcp-run";
 import { LifeGoal, Quest } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
       quests = [],
       streak = 0,
       level = 1,
-      location,
+      xp = 0,
       history = [],
     } = body as {
       message: string;
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       quests: Quest[];
       streak: number;
       level: number;
-      location?: { latitude: number; longitude: number } | null;
+      xp: number;
       history?: Array<{ role: "user" | "assistant"; content: string }>;
     };
 
@@ -27,13 +27,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
-    const result = await runLifeAgent({
+    const result = await runLifeAgentViaMcp({
       message: message.trim(),
       goals,
       quests,
       streak,
       level,
-      location,
+      xp,
       history,
     });
 
@@ -42,9 +42,10 @@ export async function POST(req: NextRequest) {
       actions: result.actions,
       provider: result.provider,
     });
-  } catch {
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to process message" },
+      { error: `Failed to process message: ${msg.slice(0, 200)}` },
       { status: 500 }
     );
   }

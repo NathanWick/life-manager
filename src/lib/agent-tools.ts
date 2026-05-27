@@ -124,7 +124,7 @@ export function parseToolCall(
   try {
     const args = JSON.parse(argsJson) as Record<string, unknown>;
 
-    if (name === "create_goal") {
+    if (name === "create_goal" || name === "create_north_star") {
       return {
         type: "create_goal",
         title: String(args.title),

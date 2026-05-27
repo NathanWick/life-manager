@@ -14,7 +14,7 @@ export function LifeQuestApp() {
         <div>
           <h1 className="text-sm font-semibold leading-tight">LifeQuest</h1>
           <p className="text-[11px] text-muted-foreground">
-            Your life operating system
+            AI + MCP · goals &amp; quests from chat
           </p>
         </div>
       </header>
