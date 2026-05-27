@@ -92,7 +92,11 @@ export function ChatPanel() {
     } catch (err) {
       const detail =
         err instanceof Error ? err.message : "Unknown error";
-      const friendly = detail.includes("RATE_LIMIT")
+      const isRateLimit =
+        detail.includes("RATE_LIMIT") ||
+        detail.includes("429") ||
+        /rate limit/i.test(detail);
+      const friendly = isRateLimit
         ? "Groq rate limit — wait about a minute, then try again. Or in Vercel set GROQ_MODEL to llama-3.1-8b-instant (higher free limits than Qwen)."
         : detail.includes("model") && detail.includes("not exist")
           ? "Wrong model name — set GROQ_MODEL to qwen/qwen3-32b in Vercel and redeploy."

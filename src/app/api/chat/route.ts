@@ -44,9 +44,13 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json(
-      { error: `Failed to process message: ${msg.slice(0, 200)}` },
-      { status: 500 }
-    );
+    const isRateLimit =
+      msg.includes("RATE_LIMIT") ||
+      msg.includes("429") ||
+      /rate limit/i.test(msg);
+    const error = isRateLimit
+      ? "RATE_LIMIT: Groq free tier limit hit. Wait 60 seconds and try again, or set GROQ_MODEL=llama-3.1-8b-instant in Vercel for higher limits."
+      : `Failed to process message: ${msg.slice(0, 200)}`;
+    return NextResponse.json({ error }, { status: isRateLimit ? 429 : 500 });
   }
 }
