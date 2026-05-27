@@ -1,10 +1,5 @@
-import { AppShell } from "@/components/layout/app-shell";
-import { QuestsSection } from "@/components/quests/quests-section";
+import { redirect } from "next/navigation";
 
 export default function QuestsPage() {
-  return (
-    <AppShell title="Quests">
-      <QuestsSection />
-    </AppShell>
-  );
+  redirect("/");
 }

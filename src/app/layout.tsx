@@ -12,9 +12,8 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "LifeQuest — Your Life Operating System",
-  description:
-    "Gamify your life goals with quests, XP, streaks, and an AI Life Agent.",
+  title: "LifeQuest",
+  description: "Simple life dashboard with an AI agent",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -34,6 +33,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   interactiveWidget: "resizes-content",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -43,11 +43,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={dmSans.variable}>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased h-dvh overflow-hidden">
         <Providers>
           {children}
           <PwaRegister />
-          <Toaster />
+          <Toaster position="top-center" />
         </Providers>
       </body>
     </html>
