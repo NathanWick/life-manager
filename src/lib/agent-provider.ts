@@ -27,7 +27,7 @@ export function resolveAgentProvider(): ProviderConfig | null {
     return {
       url: "https://api.groq.com/openai/v1/chat/completions",
       apiKey: groqKey,
-      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+      model: process.env.GROQ_MODEL || "qwen/qwen3-32b",
     };
   }
 
