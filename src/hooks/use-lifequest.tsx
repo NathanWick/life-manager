@@ -40,6 +40,7 @@ interface LifeQuestContextValue extends LifeQuestState {
   skipQuest: (id: string) => void;
   deleteQuest: (id: string) => void;
   addChatMessage: (msg: Omit<ChatMessage, "id" | "timestamp">) => void;
+  clearChat: () => void;
   setLocation: (loc: UserLocation | null) => void;
   resetAll: () => void;
 }
@@ -229,6 +230,10 @@ export function LifeQuestProvider({ children }: { children: React.ReactNode }) {
     [setStateWithAchievements]
   );
 
+  const clearChat = useCallback(() => {
+    setState((prev) => ({ ...prev, chatHistory: [] }));
+  }, []);
+
   const setLocation = useCallback((loc: UserLocation | null) => {
     setStateWithAchievements((prev) => ({ ...prev, location: loc }));
   }, [setStateWithAchievements]);
@@ -257,6 +262,7 @@ export function LifeQuestProvider({ children }: { children: React.ReactNode }) {
     skipQuest,
     deleteQuest,
     addChatMessage,
+    clearChat,
     setLocation,
     resetAll,
   };

@@ -7,7 +7,7 @@ import { applyAgentActions } from "@/lib/apply-agent-actions";
 import type { AgentAction } from "@/lib/agent-tools";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Sparkles, Target, Scroll, User } from "lucide-react";
+import { Loader2, Send, Sparkles, Target, Scroll, User, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -29,6 +29,7 @@ export function ChatPanel() {
     xp,
     chatHistory,
     addChatMessage,
+    clearChat,
     addGoal,
     addQuest,
     hydrated,
@@ -118,6 +119,21 @@ export function ChatPanel() {
 
   return (
     <div className="flex flex-1 flex-col min-h-0 bg-background">
+      {chatHistory.length > 0 && (
+        <div className="shrink-0 flex justify-end px-4 pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              clearChat();
+              toast.success("Chat cleared — fresh context loaded");
+            }}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive transition-colors rounded-full px-2.5 py-1 hover:bg-destructive/10"
+          >
+            <Trash2 className="h-3 w-3" />
+            Clear chat
+          </button>
+        </div>
+      )}
       <div
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3"
