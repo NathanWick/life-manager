@@ -27,7 +27,7 @@ export function resolveAgentProvider(): ProviderConfig | null {
     return {
       url: "https://api.groq.com/openai/v1/chat/completions",
       apiKey: groqKey,
-      model: process.env.GROQ_MODEL || "qwen/qwen3-32b",
+      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
     };
   }
 
@@ -108,30 +108,15 @@ Level: ${ctx.level}, Streak: ${ctx.streak} days
 Location: ${ctx.location ? `${ctx.location.latitude}, ${ctx.location.longitude}` : "unknown"}`;
 }
 
-export async function chatCompletion(params: {
-  messages: ChatCompletionMessage[];
-  tools?: boolean | OpenAITool[];
-}): Promise<{
-  message: ChatCompletionMessage;
-  finishReason: string;
-}> {
-  const provider = resolveAgentProvider();
-  if (!provider) {
-    throw new Error("NO_PROVIDER");
-  }
+function groqFallbackModel(): string | null {
+  if (!process.env.GROQ_API_KEY) return null;
+  return process.env.GROQ_FALLBACK_MODEL || "llama-3.1-8b-instant";
+}
 
-  const body: Record<string, unknown> = {
-    model: provider.model,
-    messages: params.messages,
-    temperature: 0.6,
-    max_tokens: 700,
-  };
-
-  if (params.tools) {
-    body.tools = params.tools === true ? AGENT_TOOLS : params.tools;
-    body.tool_choice = "auto";
-  }
-
+async function requestCompletion(
+  provider: ProviderConfig,
+  body: Record<string, unknown>
+): Promise<Response> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${provider.apiKey}`,
     "Content-Type": "application/json",
@@ -143,14 +128,61 @@ export async function chatCompletion(params: {
     headers["X-Title"] = "LifeQuest";
   }
 
-  const res = await fetch(provider.url, {
+  return fetch(provider.url, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
   });
+}
+
+export async function chatCompletion(params: {
+  messages: ChatCompletionMessage[];
+  tools?: boolean | OpenAITool[];
+  modelOverride?: string;
+}): Promise<{
+  message: ChatCompletionMessage;
+  finishReason: string;
+}> {
+  const provider = resolveAgentProvider();
+  if (!provider) {
+    throw new Error("NO_PROVIDER");
+  }
+
+  const model = params.modelOverride ?? provider.model;
+  const body: Record<string, unknown> = {
+    model,
+    messages: params.messages,
+    temperature: 0.5,
+    max_tokens: 400,
+  };
+
+  if (params.tools) {
+    body.tools = params.tools === true ? AGENT_TOOLS : params.tools;
+    body.tool_choice = "auto";
+  }
+
+  let res = await requestCompletion(provider, body);
+
+  if (res.status === 429 && provider.url.includes("groq.com")) {
+    await new Promise((r) => setTimeout(r, 2500));
+    res = await requestCompletion(provider, body);
+  }
+
+  if (res.status === 429 && provider.url.includes("groq.com")) {
+    const fallback = groqFallbackModel();
+    if (fallback && fallback !== model) {
+      body.model = fallback;
+      res = await requestCompletion(provider, body);
+    }
+  }
 
   if (!res.ok) {
     const err = await res.text();
+    if (res.status === 429) {
+      throw new Error(
+        "RATE_LIMIT: Groq free tier limit hit. Wait 60 seconds and try again, or set GROQ_MODEL=llama-3.1-8b-instant in Vercel for higher limits."
+      );
+    }
     throw new Error(`API ${res.status}: ${err.slice(0, 200)}`);
   }
 

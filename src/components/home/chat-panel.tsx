@@ -92,9 +92,16 @@ export function ChatPanel() {
     } catch (err) {
       const detail =
         err instanceof Error ? err.message : "Unknown error";
+      const friendly = detail.includes("RATE_LIMIT")
+        ? "Groq rate limit — wait about a minute, then try again. Or in Vercel set GROQ_MODEL to llama-3.1-8b-instant (higher free limits than Qwen)."
+        : detail.includes("model") && detail.includes("not exist")
+          ? "Wrong model name — set GROQ_MODEL to qwen/qwen3-32b in Vercel and redeploy."
+          : detail.includes("GROQ_API_KEY") || detail.includes("NO_PROVIDER")
+            ? "Add GROQ_API_KEY in Vercel (Production), redeploy, then try again."
+            : detail;
       addChatMessage({
         role: "assistant",
-        content: `Agent error: ${detail}\n\nIf this mentions the API key: Vercel → life-manager → Settings → Environment Variables → add GROQ_API_KEY + GROQ_MODEL for Production, Preview, and Development, then Redeploy.`,
+        content: friendly,
       });
     } finally {
       setLoading(false);

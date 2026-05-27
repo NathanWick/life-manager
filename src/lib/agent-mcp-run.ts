@@ -16,7 +16,7 @@ import { goalIdByTitle } from "@/mcp/lifequest-context";
 import type { LifeGoal, Quest } from "@/types";
 import type { AgentRunResult } from "@/lib/agent-run";
 
-const MAX_TOOL_ROUNDS = 4;
+const MAX_TOOL_ROUNDS = 2;
 
 export async function runLifeAgentViaMcp(input: {
   message: string;
@@ -46,26 +46,16 @@ export async function runLifeAgentViaMcp(input: {
   const goalMap = goalIdByTitle(input.goals);
   const allActions: AgentAction[] = [];
 
-  const system = `${buildSystemPrompt({
-    goals: input.goals,
-    quests: input.quests,
-    streak: input.streak,
-    level: input.level,
-    location: input.location,
-  })}
+  const system = `Life Agent for LifeQuest. Level ${input.level}, streak ${input.streak}d.
+Goals: ${JSON.stringify(input.goals.map((g) => ({ title: g.title, progress: g.progress })))}
+Active quests: ${input.quests.filter((q) => q.status === "active").length}
 
-## MCP tools (you MUST use these — not plain text)
-- **create_north_star** — long-term life goal / north star ONLY
-- **create_quest** — short-term actionable quest for today/this week
-- **list_goals** / **list_active_quests** — read before linking quests
-- **get_life_stats** — level, XP, streak
-
-If user says "north star" → **create_north_star**, never create_quest with "go fill a form".
-If user wants something to do today → **create_quest** with steps + YouTube link when helpful.`;
+Tools: create_north_star = long-term goal/north star. create_quest = today/this week task. list_goals, list_active_quests, get_life_stats.
+User says north star → create_north_star. User wants tasks today → create_quest. Use tools; reply in 1-2 sentences.`;
 
   const messages: ChatCompletionMessage[] = [
     { role: "system", content: system },
-    ...(input.history ?? []).slice(-8).map((m) => ({
+    ...(input.history ?? []).slice(-4).map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     })),
