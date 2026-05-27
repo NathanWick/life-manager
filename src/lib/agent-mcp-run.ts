@@ -49,8 +49,11 @@ export async function runLifeAgentViaMcp(input: {
 Goals: ${JSON.stringify(input.goals.map((g) => ({ title: g.title, progress: g.progress })))}
 Active quests: ${input.quests.filter((q) => q.status === "active").length}
 
-Tools: create_north_star = long-term goal/north star. create_quest = today/this week task. list_goals, list_active_quests, get_life_stats.
-User says north star → create_north_star. User wants tasks today → create_quest. Use tools; reply in 1-2 sentences.`;
+Tools: create_north_star = long-term goal/north star. create_quest = today/this week task. list_goals, list_active_quests, get_life_stats, get_north_star.
+User says north star → create_north_star. User wants tasks today → create_quest.
+User asks "what is my north star?" or "what are my goals?" → call get_north_star or list_goals, then summarize warmly.
+User asks "how am I doing?" or "my progress" → call get_life_stats, summarize with encouragement.
+Use tools; reply in 1-3 sentences. Be warm and encouraging.`;
 
   const messages: ChatCompletionMessage[] = [
     { role: "system", content: system },
