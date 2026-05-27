@@ -1,10 +1,5 @@
-import { AppShell } from "@/components/layout/app-shell";
-import { DashboardHome } from "@/components/dashboard/dashboard-home";
+import { LifeQuestApp } from "@/components/home/lifequest-app";
 
 export default function HomePage() {
-  return (
-    <AppShell>
-      <DashboardHome />
-    </AppShell>
-  );
+  return <LifeQuestApp />;
 }

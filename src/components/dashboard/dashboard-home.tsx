@@ -1,5 +1,7 @@
 "use client";
 
+import { AiAgentChat } from "@/components/agent/ai-agent-chat";
+import { GettingStarted } from "@/components/dashboard/getting-started";
 import { LocationBanner } from "@/components/location/location-banner";
 import { ProgressRing } from "@/components/gamification/progress-ring";
 import { AchievementsGrid } from "@/components/gamification/achievements-grid";
@@ -13,7 +15,6 @@ import { cn } from "@/lib/utils";
 import {
   Flame,
   Scroll,
-  Sparkles,
   Target,
   Zap,
   ChevronRight,
@@ -44,46 +45,53 @@ export function DashboardHome() {
   }
 
   return (
-    <div className="space-y-5">
-      <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
-        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/5 blur-2xl" />
-        <div className="absolute -left-4 bottom-0 h-24 w-24 rounded-full bg-emerald-500/5 blur-2xl" />
-        <div className="relative flex items-center gap-5">
+    <div className="space-y-5 pb-4">
+      <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm">
+        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/5 blur-2xl pointer-events-none" />
+        <div className="absolute -left-4 bottom-0 h-24 w-24 rounded-full bg-emerald-500/5 blur-2xl pointer-events-none" />
+        <div className="relative flex items-center gap-3 sm:gap-4 min-w-0">
           <ProgressRing
             value={lifeProgress}
             label="Life"
             sublabel="progress"
-            size={110}
+            size={96}
+            className="shrink-0"
           />
-          <div className="flex-1 space-y-3">
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          <div className="flex-1 min-w-0 space-y-2.5 sm:space-y-3">
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">
                 Level {xpProgress.level}
               </p>
-              <p className="text-2xl font-semibold">{xp.toLocaleString()} XP</p>
+              <p className="text-xl sm:text-2xl font-semibold tabular-nums truncate">
+                {xp.toLocaleString()} XP
+              </p>
             </div>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Next level</span>
-                <span>
-                  {xpProgress.current}/{xpProgress.needed} XP
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex justify-between gap-2 text-[10px] sm:text-xs text-muted-foreground">
+                <span className="shrink-0">Next level</span>
+                <span className="tabular-nums shrink-0">
+                  {xpProgress.current}/{xpProgress.needed}
                 </span>
               </div>
-              <Progress value={xpProgress.percent} className="h-2" />
+              <Progress value={xpProgress.percent} className="h-2 w-full" />
             </div>
-            <div className="flex gap-2">
-              <Badge variant="secondary" className="gap-1">
-                <Flame className="h-3 w-3 text-orange-500" />
-                {streak} day streak
+            <div className="flex flex-wrap gap-1.5">
+              <Badge variant="secondary" className="gap-1 text-[10px] sm:text-xs max-w-full">
+                <Flame className="h-3 w-3 shrink-0 text-orange-500" />
+                <span className="truncate">{streak} day streak</span>
               </Badge>
-              <Badge variant="outline" className="gap-1">
-                <Target className="h-3 w-3" />
-                {activeGoals.length} active goals
+              <Badge variant="outline" className="gap-1 text-[10px] sm:text-xs max-w-full">
+                <Target className="h-3 w-3 shrink-0" />
+                <span className="truncate">{activeGoals.length} goals</span>
               </Badge>
             </div>
           </div>
         </div>
       </section>
+
+      <AiAgentChat variant="embedded" />
+
+      <GettingStarted />
 
       <LocationBanner />
 
@@ -97,12 +105,12 @@ export function DashboardHome() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/agent">
+        <Link href="/goals">
           <Card className="hover:bg-muted/30 transition-colors h-full">
             <CardContent className="p-4">
-              <Sparkles className="h-5 w-5 text-primary mb-2" />
-              <p className="text-sm font-medium">AI Life Agent</p>
-              <p className="text-xs text-muted-foreground">Get personalized quests</p>
+              <Target className="h-5 w-5 text-primary mb-2" />
+              <p className="text-2xl font-semibold">{goals.length}</p>
+              <p className="text-xs text-muted-foreground">Life goals</p>
             </CardContent>
           </Card>
         </Link>
@@ -124,15 +132,15 @@ export function DashboardHome() {
             <div className="text-center py-6 text-sm text-muted-foreground">
               <Zap className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p>No active quests yet.</p>
-              <Link
-                href="/agent"
+              <a
+                href="#agent"
                 className={cn(
                   buttonVariants({ variant: "link", size: "sm" }),
                   "mt-1 inline-flex"
                 )}
               >
-                Ask your Life Agent
-              </Link>
+                Ask your Life Agent above
+              </a>
             </div>
           ) : (
             activeQuests.slice(0, 4).map((quest) => (

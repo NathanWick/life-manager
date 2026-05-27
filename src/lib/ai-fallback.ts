@@ -1,5 +1,12 @@
 import { getLocationSuggestions } from "@/lib/location-suggestions";
 import { questXpReward } from "@/lib/gamification";
+import { buildActionableQuest } from "@/lib/quest-resources";
+import {
+  parseGoalFromMessage,
+  parseQuestsFromMessage,
+  looksLikeGoalIntent,
+  looksLikeQuestOnlyIntent,
+} from "@/lib/parse-natural-language";
 import { LifeGoal, QuestType } from "@/types";
 
 interface GenerateReplyInput {
@@ -10,77 +17,185 @@ interface GenerateReplyInput {
   hasLocation: boolean;
 }
 
+type SuggestedQuest = {
+  title: string;
+  description: string;
+  type: QuestType;
+  difficulty: "easy" | "medium" | "hard";
+  estimatedMinutes: number;
+  xpReward: number;
+  goalId?: string;
+  locationContext?: string;
+  actionSteps?: string[];
+  resourceUrl?: string;
+  resourceLabel?: string;
+  suggestedByAI: boolean;
+};
+
+function pushActionableQuest(
+  list: SuggestedQuest[],
+  goal: LifeGoal | null,
+  opts?: { questType?: QuestType; difficulty?: "easy" | "medium" | "hard"; includeVideo?: boolean }
+) {
+  const draft = buildActionableQuest(goal?.title ?? "today", {
+    goalTitle: goal?.title,
+    category: goal?.category,
+    questType: opts?.questType ?? "daily",
+    difficulty: opts?.difficulty ?? "medium",
+    includeVideo: opts?.includeVideo,
+  });
+  list.push({
+    title: draft.title,
+    description: draft.description,
+    type: draft.questType,
+    difficulty: draft.difficulty,
+    estimatedMinutes: draft.estimatedMinutes,
+    xpReward: questXpReward(draft.difficulty, draft.questType),
+    goalId: goal?.id,
+    actionSteps: draft.actionSteps,
+    resourceUrl: draft.resourceUrl,
+    resourceLabel: draft.resourceLabel,
+    suggestedByAI: true,
+  });
+}
+
 export function generateFallbackReply(input: GenerateReplyInput): {
   content: string;
-  suggestedQuests: Array<{
+  suggestedGoals?: Array<{
     title: string;
-    description: string;
-    type: QuestType;
-    difficulty: "easy" | "medium" | "hard";
-    estimatedMinutes: number;
-    xpReward: number;
-    goalId?: string;
-    locationContext?: string;
-    suggestedByAI: boolean;
+    category: LifeGoal["category"];
+    priority: LifeGoal["priority"];
+    whyItMatters: string;
+    progress: number;
   }>;
+  suggestedQuests: SuggestedQuest[];
 } {
   const { message, goals, streak, level, hasLocation } = input;
   const lower = message.toLowerCase();
-  const suggestedQuests: ReturnType<typeof generateFallbackReply>["suggestedQuests"] =
-    [];
+  const suggestedQuests: SuggestedQuest[] = [];
+  const suggestedGoals: NonNullable<
+    ReturnType<typeof generateFallbackReply>["suggestedGoals"]
+  > = [];
 
-  let content =
-    "I'm your Life Agent — here to help you turn big dreams into small, winnable quests. ";
-
-  if (goals.length === 0) {
-    content +=
-      "You haven't set any life goals yet. Head to **Goals** and add one or two that matter most. Then I can suggest daily quests tailored to you!";
-    suggestedQuests.push({
-      title: "Define your north star",
-      description:
-        "Write down one life goal and why it matters to you in the Goals section.",
-      type: "daily",
-      difficulty: "easy",
-      estimatedMinutes: 10,
-      xpReward: questXpReward("easy", "daily"),
-      suggestedByAI: true,
+  const parsedGoal = parseGoalFromMessage(message);
+  if (parsedGoal) {
+    suggestedGoals.push({
+      title: parsedGoal.title,
+      category: parsedGoal.category,
+      priority: parsedGoal.priority,
+      whyItMatters: parsedGoal.whyItMatters,
+      progress: 0,
     });
-    return { content, suggestedQuests };
   }
 
   const topGoal =
-    [...goals].sort((a, b) => {
-      const p = { high: 3, medium: 2, low: 1 };
-      return p[b.priority] - p[a.priority];
-    })[0];
+    goals[0] ??
+    (suggestedGoals[0]
+      ? ({
+          id: "__pending__",
+          title: suggestedGoals[0].title,
+          category: suggestedGoals[0].category,
+          priority: suggestedGoals[0].priority,
+          whyItMatters: suggestedGoals[0].whyItMatters,
+          progress: 0,
+          createdAt: "",
+          updatedAt: "",
+        } as LifeGoal)
+      : null);
+
+  if (parsedGoal) {
+    const isNorthStar = /\bnorth\s*star\b/i.test(message);
+    let content = isNorthStar
+      ? `Your north star is set: "${parsedGoal.title}". It's on your Goals tab.`
+      : `Created your goal "${parsedGoal.title}" — no form needed.`;
+    if (looksLikeQuestOnlyIntent(message) || /\b(quest|today)\b/i.test(message)) {
+      const quests = parseQuestsFromMessage(message, topGoal ? [topGoal] : []);
+      for (const q of quests) {
+        if (q.type !== "create_quest") continue;
+        suggestedQuests.push({
+          title: q.title,
+          description: q.description,
+          type: q.questType,
+          difficulty: q.difficulty,
+          estimatedMinutes: q.estimatedMinutes,
+          xpReward: q.xpReward,
+          goalId: goals[0]?.id,
+          actionSteps: q.actionSteps,
+          resourceUrl: q.resourceUrl,
+          resourceLabel: q.resourceLabel,
+          suggestedByAI: true,
+        });
+      }
+      if (quests.length > 0) {
+        content += ` Added ${quests.length} actionable quest${quests.length > 1 ? "s" : ""} with steps and links.`;
+      }
+    } else {
+      content +=
+        ' Say "give me 2 quests for today" for follow-along tasks (with YouTube links).';
+    }
+    return { content, suggestedGoals, suggestedQuests };
+  }
+
+  if (goals.length === 0 && !looksLikeGoalIntent(message)) {
+    return {
+      content:
+        'Tell me your north star in plain English — e.g. "I want a six pack" or "My north star is financial freedom" — and I\'ll create the goal for you.',
+      suggestedQuests: [],
+    };
+  }
+
+  if (looksLikeQuestOnlyIntent(message) || /\d+\s*quest/i.test(message)) {
+    const quests = parseQuestsFromMessage(message, goals);
+    for (const q of quests) {
+      if (q.type !== "create_quest") continue;
+      suggestedQuests.push({
+        title: q.title,
+        description: q.description,
+        type: q.questType,
+        difficulty: q.difficulty,
+        estimatedMinutes: q.estimatedMinutes,
+        xpReward: q.xpReward,
+        goalId: q.goalId,
+        actionSteps: q.actionSteps,
+        resourceUrl: q.resourceUrl,
+        resourceLabel: q.resourceLabel,
+        suggestedByAI: true,
+      });
+    }
+    return {
+      content:
+        quests.length > 0
+          ? `Added ${quests.length} actionable quest${quests.length > 1 ? "s" : ""} — open Quests for steps and YouTube links.`
+          : "Tell me what you'd like to do today.",
+      suggestedQuests,
+    };
+  }
+
+  if (!topGoal) {
+    return {
+      content:
+        'Describe your north star — e.g. "My north star is to get a six pack" — and I\'ll add it as a goal.',
+      suggestedQuests: [],
+    };
+  }
+
+  let content = "";
 
   if (lower.includes("overwhelm") || lower.includes("stuck") || lower.includes("hard")) {
-    content += `Feeling stuck is normal — you're at **Level ${level}** with a **${streak}-day streak**, which already shows commitment. Let's shrink "${topGoal.title}" into one tiny step you can finish today.`;
-    suggestedQuests.push({
-      title: `5-minute step: ${topGoal.title}`,
-      description: `Do the smallest possible action toward "${topGoal.title}" — even 5 minutes counts.`,
-      type: "daily",
+    content = `Level ${level}, ${streak}-day streak — you've got this. One small quest for "${topGoal.title}":`;
+    pushActionableQuest(suggestedQuests, goals[0] ?? topGoal, {
       difficulty: "easy",
-      estimatedMinutes: 5,
-      xpReward: questXpReward("easy", "daily"),
-      goalId: topGoal.id,
-      suggestedByAI: true,
+      includeVideo: false,
     });
   } else if (lower.includes("week") || lower.includes("plan")) {
-    content += `Here's a weekly plan angle for **${topGoal.category}** goal "${topGoal.title}" (${topGoal.progress}% done). Break it into 3 checkpoints this week.`;
-    suggestedQuests.push({
-      title: `Weekly checkpoint: ${topGoal.title}`,
-      description: `Set one measurable milestone for "${topGoal.title}" and schedule it on your calendar.`,
-      type: "weekly",
-      difficulty: "medium",
-      estimatedMinutes: 30,
-      xpReward: questXpReward("medium", "weekly"),
-      goalId: topGoal.id,
-      suggestedByAI: true,
+    content = `Weekly plan for "${topGoal.title}":`;
+    pushActionableQuest(suggestedQuests, goals[0] ?? topGoal, {
+      questType: "weekly",
+      includeVideo: false,
     });
   } else if (hasLocation || lower.includes("near") || lower.includes("location")) {
     const loc = getLocationSuggestions()[0];
-    content += `${loc.message} Want to try a location-based quest?`;
+    content = loc.message;
     suggestedQuests.push({
       title: loc.questTitle,
       description: loc.questDescription,
@@ -89,40 +204,20 @@ export function generateFallbackReply(input: GenerateReplyInput): {
       estimatedMinutes: loc.estimatedMinutes,
       xpReward: questXpReward(loc.difficulty, "daily"),
       locationContext: loc.context,
-      goalId: topGoal.id,
+      goalId: goals[0]?.id,
+      actionSteps: [
+        "Head to the suggested spot or your nearest option.",
+        "Spend the time block on your goal.",
+        "Mark complete when done.",
+      ],
       suggestedByAI: true,
     });
   } else {
-    content += `Based on your **${topGoal.category}** priority goal "${topGoal.title}" (${topGoal.progress}% complete), here's what I'd focus on today. Remember: ${topGoal.whyItMatters}`;
-    suggestedQuests.push({
-      title: `Daily win: ${topGoal.title}`,
-      description: `Spend 15 focused minutes on "${topGoal.title}" — no perfection required.`,
-      type: "daily",
-      difficulty: "medium",
-      estimatedMinutes: 15,
-      xpReward: questXpReward("medium", "daily"),
-      goalId: topGoal.id,
-      suggestedByAI: true,
-    });
-    if (goals.length > 1) {
-      const second = goals.find((g) => g.id !== topGoal.id);
-      if (second) {
-        suggestedQuests.push({
-          title: `Bonus: ${second.title}`,
-          description: `Quick 10-minute touch on "${second.title}" to keep momentum.`,
-          type: "daily",
-          difficulty: "easy",
-          estimatedMinutes: 10,
-          xpReward: questXpReward("easy", "daily"),
-          goalId: second.id,
-          suggestedByAI: true,
-        });
-      }
-    }
+    content = `Today's actionable quest for "${topGoal.title}":`;
+    pushActionableQuest(suggestedQuests, goals[0] ?? topGoal);
   }
 
-  content +=
-    "\n\nTap **Add to quests** on any suggestion below, or ask me to break a specific goal into smaller steps!";
+  content += " Check Quests for steps and links.";
 
-  return { content, suggestedQuests };
+  return { content, suggestedGoals, suggestedQuests };
 }
