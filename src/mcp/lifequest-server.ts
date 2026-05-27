@@ -171,24 +171,72 @@ export function createLifeQuestMcpServer(ctx: LifeQuestMcpContext) {
   server.registerTool(
     "get_life_stats",
     {
-      description: "Get user level, XP, and streak.",
+      description: "Get user level, XP, streak, and full progress overview. Use to answer: how am I doing, my stats, my level, my progress, check in, summary.",
       inputSchema: {},
     },
-    async () => ({
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify({
-            level: ctx.level,
-            xp: ctx.xp,
-            streak: ctx.streak,
-            goalCount: ctx.goals.length,
-            activeQuestCount: ctx.quests.filter((q) => q.status === "active")
-              .length,
-          }),
-        },
-      ],
-    })
+    async () => {
+      const activeQuests = ctx.quests.filter((q) => q.status === "active");
+      const completedQuests = ctx.quests.filter((q) => q.status === "completed");
+      const avgProgress = ctx.goals.length > 0
+        ? Math.round(ctx.goals.reduce((s, g) => s + g.progress, 0) / ctx.goals.length)
+        : 0;
+      const northStar = ctx.goals.find((g) => g.priority === "high") ?? ctx.goals[0];
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({
+              level: ctx.level,
+              xp: ctx.xp,
+              streak: ctx.streak,
+              goalCount: ctx.goals.length,
+              activeQuestCount: activeQuests.length,
+              completedQuestCount: completedQuests.length,
+              averageGoalProgress: avgProgress,
+              northStar: northStar ? { title: northStar.title, progress: northStar.progress, category: northStar.category } : null,
+            }),
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
+    "get_north_star",
+    {
+      description: "Get the user's north star (highest priority life goal) with full details. Use when user asks: what is my north star, what's my main goal, what am I working toward.",
+      inputSchema: {},
+    },
+    async () => {
+      const northStar = ctx.goals.find((g) => g.priority === "high") ?? ctx.goals[0];
+      if (!northStar) {
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify({ hasNorthStar: false, message: "No north star set yet." }) }],
+        };
+      }
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({
+              hasNorthStar: true,
+              title: northStar.title,
+              category: northStar.category,
+              priority: northStar.priority,
+              progress: northStar.progress,
+              whyItMatters: northStar.whyItMatters,
+              deadline: northStar.deadline ?? null,
+              otherGoals: ctx.goals.filter((g) => g.id !== northStar.id).map((g) => ({
+                title: g.title,
+                category: g.category,
+                progress: g.progress,
+              })),
+            }),
+          },
+        ],
+      };
+    }
   );
 
   return server;

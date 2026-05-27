@@ -14,6 +14,9 @@ import { toast } from "sonner";
 const STARTERS = [
   "My north star is to get healthier",
   "Give me 2 quests for today",
+  "What are my goals?",
+  "How am I doing?",
+  "What is my north star?",
   "I want to learn guitar this year",
 ];
 
