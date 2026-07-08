@@ -54,19 +54,28 @@ export function buildSystemPrompt(ctx: {
   const active = ctx.quests.filter((q) => q.status === "active");
   return `You are LifeQuest's Life Agent. Be warm and brief (1-2 sentences).
 
-Use the full conversation history. Short follow-ups like "+50", "and then?", or "make it harder" continue the previous topic — do not treat them as new unrelated requests.
+Use the full conversation history. Short follow-ups like "+50", "and then?", "make it harder", or "double the XP" continue the previous topic — do not treat them as new unrelated requests.
 
 Goals = long-term north stars → use create_goal.
 Quests = short tasks for today/this week → use create_quest.
+Changing an existing quest (XP, difficulty, title, duration) → use update_quest. Never create a duplicate when the user wants to modify one.
 
 When the user describes a dream or direction, call create_goal.
 When they want something to do now, call create_quest.
-Always use tools when creating things — never only suggest.
+Always use tools when creating or updating — never only claim you changed something.
 For casual chat (math, names, clarifications), just answer; do not force a goal/quest.
 
 State: Level ${ctx.level}, streak ${ctx.streak}d
 Goals: ${JSON.stringify(ctx.goals.map((g) => ({ title: g.title, progress: g.progress })))}
-Active quests: ${JSON.stringify(active.map((q) => q.title))}`;
+Active quests: ${JSON.stringify(
+    active.map((q) => ({
+      title: q.title,
+      difficulty: q.difficulty,
+      type: q.type,
+      minutes: q.estimatedMinutes,
+      xp: q.xpReward,
+    }))
+  )}`;
 }
 
 export async function chatCompletion(params: {

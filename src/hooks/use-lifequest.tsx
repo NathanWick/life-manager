@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { v4 as uuidv4 } from "uuid";
+import type { AgentAction } from "@/lib/agent-tools";
 import {
   levelFromXp,
   overallLifeProgress,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/gamification";
 import { initialState, loadState, saveState } from "@/lib/storage";
 import {
+  AgentActionSummary,
   ChatMessage,
   LifeGoal,
   LifeQuestState,
@@ -30,11 +32,42 @@ interface LifeQuestContextValue extends LifeQuestState {
   lifeProgress: number;
   addGoal: (goal: GoalInput) => void;
   addQuest: (quest: QuestInput) => void;
+  updateQuest: (id: string, updates: Partial<QuestInput>) => void;
   completeQuest: (id: string) => void;
   addChatMessage: (msg: Omit<ChatMessage, "id" | "timestamp">) => void;
+  applyAgentResult: (
+    actions: AgentAction[],
+    assistant: { content: string }
+  ) => AgentActionSummary[];
 }
 
 const LifeQuestContext = createContext<LifeQuestContextValue | null>(null);
+
+function findActiveQuest(
+  quests: Quest[],
+  questId?: string,
+  questTitle?: string
+): Quest | undefined {
+  if (questId) {
+    const byId = quests.find((q) => q.id === questId && q.status === "active");
+    if (byId) return byId;
+  }
+  if (questTitle) {
+    const key = questTitle.toLowerCase().trim();
+    return (
+      quests.find(
+        (q) => q.status === "active" && q.title.toLowerCase() === key
+      ) ??
+      quests.find(
+        (q) =>
+          q.status === "active" &&
+          (q.title.toLowerCase().includes(key) ||
+            key.includes(q.title.toLowerCase()))
+      )
+    );
+  }
+  return undefined;
+}
 
 export function LifeQuestProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<LifeQuestState>(initialState);
@@ -66,6 +99,19 @@ export function LifeQuestProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date().toISOString(),
     };
     setState((prev) => ({ ...prev, quests: [...prev.quests, newQuest] }));
+  }, []);
+
+  const updateQuest = useCallback((id: string, updates: Partial<QuestInput>) => {
+    setState((prev) => {
+      const match = findActiveQuest(prev.quests, id, updates.title);
+      if (!match) return prev;
+      return {
+        ...prev,
+        quests: prev.quests.map((q) =>
+          q.id === match.id ? { ...q, ...updates } : q
+        ),
+      };
+    });
   }, []);
 
   const completeQuest = useCallback((id: string) => {
@@ -121,6 +167,88 @@ export function LifeQuestProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const applyAgentResult = useCallback(
+    (actions: AgentAction[], assistant: { content: string }) => {
+      let summaries: AgentActionSummary[] = [];
+
+      setState((prev) => {
+        let goals = prev.goals;
+        let quests = prev.quests;
+        const applied: AgentActionSummary[] = [];
+
+        for (const action of actions) {
+          if (action.type === "create_goal") {
+            goals = [
+              ...goals,
+              {
+                title: action.title,
+                category: action.category,
+                priority: action.priority,
+                whyItMatters: action.whyItMatters,
+                progress: action.progress,
+                id: uuidv4(),
+                createdAt: new Date().toISOString(),
+              },
+            ];
+            applied.push({ type: "create_goal", title: action.title });
+          } else if (action.type === "create_quest") {
+            quests = [
+              ...quests,
+              {
+                title: action.title,
+                description: action.description,
+                type: action.questType,
+                difficulty: action.difficulty,
+                estimatedMinutes: action.estimatedMinutes,
+                xpReward: action.xpReward,
+                goalId: action.goalId,
+                id: uuidv4(),
+                status: "active",
+                createdAt: new Date().toISOString(),
+              },
+            ];
+            applied.push({ type: "create_quest", title: action.title });
+          } else if (action.type === "update_quest") {
+            const match = findActiveQuest(
+              quests,
+              action.questId,
+              action.questTitle || action.title
+            );
+            if (!match) continue;
+            quests = quests.map((q) =>
+              q.id === match.id ? { ...q, ...action.updates } : q
+            );
+            applied.push({
+              type: "update_quest",
+              title: action.updates.title || match.title,
+            });
+          }
+        }
+
+        summaries = applied;
+
+        return {
+          ...prev,
+          goals,
+          quests,
+          chatHistory: [
+            ...prev.chatHistory,
+            {
+              id: uuidv4(),
+              role: "assistant",
+              content: assistant.content,
+              timestamp: new Date().toISOString(),
+              appliedActions: applied.length ? applied : undefined,
+            },
+          ],
+        };
+      });
+
+      return summaries;
+    },
+    []
+  );
+
   const lifeProgress = useMemo(
     () => overallLifeProgress(state.goals),
     [state.goals]
@@ -134,8 +262,10 @@ export function LifeQuestProvider({ children }: { children: React.ReactNode }) {
         lifeProgress,
         addGoal,
         addQuest,
+        updateQuest,
         completeQuest,
         addChatMessage,
+        applyAgentResult,
       }}
     >
       {children}

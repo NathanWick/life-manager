@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLifeQuest } from "@/hooks/use-lifequest";
 import { useMobileKeyboard } from "@/hooks/use-mobile-keyboard";
-import { applyAgentActions } from "@/lib/apply-agent-actions";
 import type { AgentAction } from "@/lib/agent-tools";
 import { cn } from "@/lib/utils";
 
@@ -22,8 +21,7 @@ export function ChatPanel() {
     xp,
     chatHistory,
     addChatMessage,
-    addGoal,
-    addQuest,
+    applyAgentResult,
     hydrated,
   } = useLifeQuest();
   const [input, setInput] = useState("");
@@ -67,16 +65,8 @@ export function ChatPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
-      const applied = applyAgentActions(
-        (data.actions ?? []) as AgentAction[],
-        addGoal,
-        addQuest
-      );
-
-      addChatMessage({
-        role: "assistant",
+      applyAgentResult((data.actions ?? []) as AgentAction[], {
         content: data.content || "Here to help!",
-        appliedActions: applied.length ? applied : undefined,
       });
     } catch (err) {
       const detail = err instanceof Error ? err.message : "Unknown error";
@@ -149,7 +139,12 @@ export function ChatPanel() {
                       key={i}
                       className="mr-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground"
                     >
-                      {a.type === "create_goal" ? "Goal" : "Quest"}: {a.title}
+                      {a.type === "create_goal"
+                        ? "Goal"
+                        : a.type === "update_quest"
+                          ? "Updated"
+                          : "Quest"}
+                      : {a.title}
                     </span>
                   ))}
                 </div>

@@ -24,7 +24,9 @@ function dedupeActions(actions: AgentAction[]): AgentAction[] {
     const key =
       a.type === "create_goal"
         ? `g:${a.title}`
-        : `q:${a.title}:${a.questType}`;
+        : a.type === "update_quest"
+          ? `u:${a.questId}:${JSON.stringify(a.updates)}`
+          : `q:${a.title}:${a.questType}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -35,11 +37,11 @@ function summarize(actions: AgentAction[]): string | null {
   if (!actions.length) return null;
   return (
     actions
-      .map((a) =>
-        a.type === "create_goal"
-          ? `Added goal “${a.title}”`
-          : `Added quest “${a.title}”`
-      )
+      .map((a) => {
+        if (a.type === "create_goal") return `Added goal “${a.title}”`;
+        if (a.type === "update_quest") return `Updated quest “${a.title}”`;
+        return `Added quest “${a.title}”`;
+      })
       .join(". ") + "."
   );
 }
@@ -60,7 +62,13 @@ export async function runLifeAgent(input: {
   history?: Array<{ role: "user" | "assistant"; content: string }>;
 }): Promise<AgentRunResult> {
   if (!resolveAgentProvider()) {
-    const fallback = generateFallbackReply(input);
+    const fallback = generateFallbackReply({
+      message: input.message,
+      goals: input.goals,
+      quests: input.quests,
+      streak: input.streak,
+      level: input.level,
+    });
     return {
       content: fallback.content,
       actions: fallback.actions,
@@ -70,6 +78,11 @@ export async function runLifeAgent(input: {
 
   const goalIdByTitle = new Map(
     input.goals.map((g) => [g.title.toLowerCase(), g.id])
+  );
+  const questIdByTitle = new Map(
+    input.quests
+      .filter((q) => q.status === "active")
+      .map((q) => [q.title.toLowerCase(), q.id])
   );
 
   const messages: ChatCompletionMessage[] = [
@@ -89,15 +102,14 @@ export async function runLifeAgent(input: {
     { role: "user", content: input.message },
   ];
 
+  const parse = (name: string, args: string) =>
+    parseToolCall(name, args, goalIdByTitle, questIdByTitle);
+
   const first = await chatCompletion({ messages, tools: true });
   const actions: AgentAction[] = [];
 
   for (const tc of first.message.tool_calls ?? []) {
-    const parsed = parseToolCall(
-      tc.function.name,
-      tc.function.arguments,
-      goalIdByTitle
-    );
+    const parsed = parse(tc.function.name, tc.function.arguments);
     if (parsed) actions.push(parsed);
   }
 
@@ -109,11 +121,7 @@ export async function runLifeAgent(input: {
   ) {
     messages.push(first.message);
     for (const tc of first.message.tool_calls!) {
-      const parsed = parseToolCall(
-        tc.function.name,
-        tc.function.arguments,
-        goalIdByTitle
-      );
+      const parsed = parse(tc.function.name, tc.function.arguments);
       messages.push({
         role: "tool",
         tool_call_id: tc.id,
@@ -122,11 +130,7 @@ export async function runLifeAgent(input: {
     }
     const second = await chatCompletion({ messages, tools: true });
     for (const tc of second.message.tool_calls ?? []) {
-      const parsed = parseToolCall(
-        tc.function.name,
-        tc.function.arguments,
-        goalIdByTitle
-      );
+      const parsed = parse(tc.function.name, tc.function.arguments);
       if (parsed) actions.push(parsed);
     }
     content = second.message.content?.trim() || content;

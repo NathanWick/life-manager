@@ -1,6 +1,6 @@
 import { questXpReward } from "@/lib/gamification";
 import type { AgentAction } from "@/lib/agent-tools";
-import type { LifeGoal } from "@/types";
+import type { LifeGoal, Quest } from "@/types";
 
 function inferCategory(text: string): LifeGoal["category"] {
   const t = text.toLowerCase();
@@ -32,14 +32,80 @@ function extractGoalTitle(message: string): string | null {
   return null;
 }
 
+function findActiveQuest(
+  message: string,
+  quests: Quest[]
+): Quest | undefined {
+  const active = quests.filter((q) => q.status === "active");
+  if (active.length === 0) return undefined;
+  const lower = message.toLowerCase();
+  const byName = active.find((q) => lower.includes(q.title.toLowerCase()));
+  if (byName) return byName;
+  if (
+    /\b(that|this|it|the quest)\b/i.test(message) ||
+    /\b(double|modify|update|change|harder|easier|xp)\b/i.test(message)
+  ) {
+    return active[active.length - 1];
+  }
+  return undefined;
+}
+
 export function generateFallbackReply(input: {
   message: string;
   goals: LifeGoal[];
+  quests?: Quest[];
   streak: number;
   level: number;
 }): { content: string; actions: AgentAction[] } {
   const { message, goals, streak, level } = input;
+  const quests = input.quests ?? [];
   const actions: AgentAction[] = [];
+
+  const target = findActiveQuest(message, quests);
+  const wantsUpdate =
+    !!target &&
+    /\b(modify|update|change|double|harder|easier|worth|xp)\b/i.test(message);
+
+  if (wantsUpdate && target) {
+    const updates: {
+      difficulty?: Quest["difficulty"];
+      xpReward?: number;
+      estimatedMinutes?: number;
+      type?: Quest["type"];
+    } = {};
+
+    if (/double|2x|twice|more xp|worth more/i.test(message)) {
+      updates.xpReward = Math.max(target.xpReward * 2, target.xpReward + 15);
+    }
+    if (/harder|hard\b/i.test(message)) {
+      updates.difficulty = "hard";
+      if (updates.xpReward == null) {
+        updates.xpReward = questXpReward("hard", target.type);
+      }
+    }
+    if (/easier|easy\b/i.test(message)) {
+      updates.difficulty = "easy";
+      if (updates.xpReward == null) {
+        updates.xpReward = questXpReward("easy", target.type);
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      actions.push({
+        type: "update_quest",
+        questId: target.id,
+        questTitle: target.title,
+        title: target.title,
+        updates,
+      });
+      return {
+        content: `Updated “${target.title}”${
+          updates.xpReward != null ? ` to +${updates.xpReward} XP` : ""
+        }.`,
+        actions,
+      };
+    }
+  }
 
   const goalTitle = extractGoalTitle(message);
   if (goalTitle) {
@@ -57,9 +123,7 @@ export function generateFallbackReply(input: {
     /\b(quest|today|task|do now|give me)\b/i.test(message) ||
     /\d+\s*quest/i.test(message);
 
-  const focus =
-    goals[0]?.title ??
-    (goalTitle ? goalTitle : null);
+  const focus = goals[0]?.title ?? (goalTitle ? goalTitle : null);
 
   if (wantsQuests || (!goalTitle && focus)) {
     const count = Math.min(

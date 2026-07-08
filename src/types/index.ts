@@ -38,7 +38,7 @@ export interface Quest {
 }
 
 export interface AgentActionSummary {
-  type: "create_goal" | "create_quest";
+  type: "create_goal" | "create_quest" | "update_quest";
   title: string;
 }
 
