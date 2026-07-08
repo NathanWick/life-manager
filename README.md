@@ -1,10 +1,11 @@
 # LifeQuest
 
-A minimal life dashboard: **4 metrics** + **AI chat**. Goals and quests are created through conversation (stored locally).
+A minimal life dashboard: **metrics** + **active quests** + **AI chat**. Goals and quests are created through conversation and stored in localStorage.
 
 ## What's on screen
 
 - **Metrics** — Level, XP, streak, life progress %
+- **Quests** — Active quests with a Done button
 - **Chat** — Talk to your Life Agent; it creates goals & quests via tool calls
 
 No tabs, no forms, no extra pages.
@@ -16,22 +17,19 @@ npm install
 npm run dev
 ```
 
-## AI + MCP
+## AI
 
-The Life Agent uses a **real LLM** (Groq/OpenAI/OpenRouter) with an in-app **MCP server** so it knows which tool to call:
+The Life Agent uses Groq, OpenRouter, or OpenAI (checked in that order):
 
-| MCP tool | When to use |
-|----------|-------------|
-| `create_north_star` | Long-term life goal / north star |
-| `create_quest` | Short-term task for today/this week |
-| `list_goals` | Read current goals before linking quests |
-| `list_active_quests` | Read active quests |
-| `get_life_stats` | Level, XP, streak |
+| Variable | Purpose |
+|----------|---------|
+| `GROQ_API_KEY` | Preferred (free tier) |
+| `GROQ_MODEL` | Override (default: `llama-3.1-8b-instant`) |
+| `OPENROUTER_API_KEY` | OpenRouter |
+| `OPENAI_API_KEY` | OpenAI |
 
-Add `GROQ_API_KEY` in Vercel or `.env.local` ([console.groq.com](https://console.groq.com/keys)).
-
-Optional: run the MCP server for Cursor via `npm run mcp` (see `.cursor/mcp.json`).
+Without a key, a local keyword fallback still creates goals/quests.
 
 ## Deploy
 
-Import to [Vercel](https://vercel.com/new) → deploy. Add `GROQ_API_KEY` in environment variables.
+Import to [Vercel](https://vercel.com/new) → deploy. Optionally add `GROQ_API_KEY`.

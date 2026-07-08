@@ -1,11 +1,16 @@
 import type { AgentAction } from "@/lib/agent-tools";
-import type { AgentActionSummary } from "@/types";
+import type {
+  AgentActionSummary,
+  GoalCategory,
+  GoalPriority,
+  QuestDifficulty,
+  QuestType,
+} from "@/types";
 
 type AddGoal = (goal: {
   title: string;
-  category: import("@/types").GoalCategory;
-  priority: import("@/types").GoalPriority;
-  deadline?: string;
+  category: GoalCategory;
+  priority: GoalPriority;
   whyItMatters: string;
   progress: number;
 }) => void;
@@ -13,15 +18,11 @@ type AddGoal = (goal: {
 type AddQuest = (quest: {
   title: string;
   description: string;
-  type: import("@/types").QuestType;
-  difficulty: import("@/types").QuestDifficulty;
+  type: QuestType;
+  difficulty: QuestDifficulty;
   estimatedMinutes: number;
   xpReward: number;
   goalId?: string;
-  suggestedByAI?: boolean;
-  actionSteps?: string[];
-  resourceUrl?: string;
-  resourceLabel?: string;
 }) => void;
 
 export function applyAgentActions(
@@ -37,12 +38,11 @@ export function applyAgentActions(
         title: action.title,
         category: action.category,
         priority: action.priority,
-        deadline: action.deadline,
         whyItMatters: action.whyItMatters,
         progress: action.progress,
       });
       applied.push({ type: "create_goal", title: action.title });
-    } else if (action.type === "create_quest") {
+    } else {
       addQuest({
         title: action.title,
         description: action.description,
@@ -51,10 +51,6 @@ export function applyAgentActions(
         estimatedMinutes: action.estimatedMinutes,
         xpReward: action.xpReward,
         goalId: action.goalId,
-        actionSteps: action.actionSteps,
-        resourceUrl: action.resourceUrl,
-        resourceLabel: action.resourceLabel,
-        suggestedByAI: true,
       });
       applied.push({ type: "create_quest", title: action.title });
     }

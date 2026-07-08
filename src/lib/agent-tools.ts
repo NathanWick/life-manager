@@ -6,18 +6,17 @@ import {
   QuestType,
 } from "@/types";
 
-/** OpenAI-compatible tool definitions for the Life Agent */
 export const AGENT_TOOLS = [
   {
     type: "function" as const,
     function: {
       name: "create_goal",
       description:
-        "Create a LONG-TERM life goal (north star): months/years horizon. Use when user describes a dream, north star, life direction, or says 'I want to…' for something big. NEVER create a quest that tells them to fill a form.",
+        "Create a long-term life goal / north star (months or years).",
       parameters: {
         type: "object",
         properties: {
-          title: { type: "string", description: "Short goal title" },
+          title: { type: "string" },
           category: {
             type: "string",
             enum: [
@@ -32,21 +31,9 @@ export const AGENT_TOOLS = [
             ],
           },
           priority: { type: "string", enum: ["low", "medium", "high"] },
-          deadline: {
-            type: "string",
-            description: "ISO date YYYY-MM-DD if mentioned",
-          },
-          whyItMatters: {
-            type: "string",
-            description: "Why this goal matters emotionally",
-          },
-          progress: {
-            type: "number",
-            description: "Current progress 0-100, default 0",
-          },
+          whyItMatters: { type: "string" },
         },
         required: ["title", "category", "priority", "whyItMatters"],
-        additionalProperties: false,
       },
     },
   },
@@ -54,8 +41,7 @@ export const AGENT_TOOLS = [
     type: "function" as const,
     function: {
       name: "create_quest",
-      description:
-        "Create a SHORT-TERM quest: specific actionable task for today/this week. Include concrete steps and a YouTube search link when learning, fitness, or how-to applies. Never tell user to 'go to Goals section'.",
+      description: "Create a short actionable quest for today or this week.",
       parameters: {
         type: "object",
         properties: {
@@ -66,24 +52,16 @@ export const AGENT_TOOLS = [
           estimatedMinutes: { type: "number" },
           goalTitle: {
             type: "string",
-            description: "Existing goal title to link",
-          },
-          actionSteps: {
-            type: "array",
-            items: { type: "string" },
-            description: "2-4 concrete steps",
-          },
-          resourceUrl: {
-            type: "string",
-            description: "YouTube search URL or helpful link",
-          },
-          resourceLabel: {
-            type: "string",
-            description: "e.g. 'Watch on YouTube'",
+            description: "Existing goal title to link, if any",
           },
         },
-        required: ["title", "description", "type", "difficulty", "estimatedMinutes"],
-        additionalProperties: false,
+        required: [
+          "title",
+          "description",
+          "type",
+          "difficulty",
+          "estimatedMinutes",
+        ],
       },
     },
   },
@@ -94,7 +72,6 @@ export interface ParsedCreateGoal {
   title: string;
   category: GoalCategory;
   priority: GoalPriority;
-  deadline?: string;
   whyItMatters: string;
   progress: number;
 }
@@ -108,10 +85,6 @@ export interface ParsedCreateQuest {
   estimatedMinutes: number;
   xpReward: number;
   goalId?: string;
-  actionSteps?: string[];
-  resourceUrl?: string;
-  resourceLabel?: string;
-  suggestedByAI: true;
 }
 
 export type AgentAction = ParsedCreateGoal | ParsedCreateQuest;
@@ -128,34 +101,28 @@ export function parseToolCall(
       return {
         type: "create_goal",
         title: String(args.title),
-        category: args.category as GoalCategory,
-        priority: args.priority as GoalPriority,
-        deadline: args.deadline ? String(args.deadline) : undefined,
-        whyItMatters: String(args.whyItMatters),
-        progress: typeof args.progress === "number" ? args.progress : 0,
+        category: (args.category as GoalCategory) || "other",
+        priority: (args.priority as GoalPriority) || "medium",
+        whyItMatters: String(args.whyItMatters || "It matters to you."),
+        progress: 0,
       };
     }
 
     if (name === "create_quest") {
-      const difficulty = args.difficulty as QuestDifficulty;
-      const questType = args.type as QuestType;
+      const difficulty = (args.difficulty as QuestDifficulty) || "medium";
+      const questType = (args.type as QuestType) || "daily";
       const goalTitle = args.goalTitle ? String(args.goalTitle) : undefined;
-      const actionSteps = Array.isArray(args.actionSteps)
-        ? args.actionSteps.map(String)
-        : undefined;
       return {
         type: "create_quest",
         title: String(args.title),
-        description: String(args.description),
+        description: String(args.description || args.title),
         questType,
         difficulty,
         estimatedMinutes: Number(args.estimatedMinutes) || 15,
         xpReward: questXpReward(difficulty, questType),
-        goalId: goalTitle ? goalIdByTitle.get(goalTitle.toLowerCase()) : undefined,
-        actionSteps,
-        resourceUrl: args.resourceUrl ? String(args.resourceUrl) : undefined,
-        resourceLabel: args.resourceLabel ? String(args.resourceLabel) : undefined,
-        suggestedByAI: true,
+        goalId: goalTitle
+          ? goalIdByTitle.get(goalTitle.toLowerCase())
+          : undefined,
       };
     }
   } catch {
@@ -166,7 +133,7 @@ export function parseToolCall(
 
 export function toolResultMessage(action: AgentAction): string {
   if (action.type === "create_goal") {
-    return `Created life goal "${action.title}" (${action.category}, ${action.priority} priority).`;
+    return `Created goal "${action.title}".`;
   }
   return `Created ${action.questType} quest "${action.title}" (+${action.xpReward} XP).`;
 }

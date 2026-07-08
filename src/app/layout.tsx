@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
-import { PwaRegister } from "@/components/pwa-register";
-import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -14,16 +12,6 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "LifeQuest",
   description: "Simple life dashboard with an AI agent",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "LifeQuest",
-  },
-  icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/icon-192.png",
-  },
 };
 
 export const viewport: Viewport = {
@@ -44,11 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={dmSans.variable}>
       <body className="font-sans antialiased h-dvh overflow-hidden">
-        <Providers>
-          {children}
-          <PwaRegister />
-          <Toaster position="top-center" />
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

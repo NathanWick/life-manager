@@ -1,4 +1,4 @@
-import { runLifeAgentViaMcp } from "@/lib/agent-mcp-run";
+import { runLifeAgent } from "@/lib/agent-run";
 import { LifeGoal, Quest } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
       quests = [],
       streak = 0,
       level = 1,
-      xp = 0,
       history = [],
     } = body as {
       message: string;
@@ -19,7 +18,6 @@ export async function POST(req: NextRequest) {
       quests: Quest[];
       streak: number;
       level: number;
-      xp: number;
       history?: Array<{ role: "user" | "assistant"; content: string }>;
     };
 
@@ -27,13 +25,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
-    const result = await runLifeAgentViaMcp({
+    const result = await runLifeAgent({
       message: message.trim(),
       goals,
       quests,
       streak,
       level,
-      xp,
       history,
     });
 
@@ -44,13 +41,14 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    const isRateLimit =
-      msg.includes("RATE_LIMIT") ||
-      msg.includes("429") ||
-      /rate limit/i.test(msg);
-    const error = isRateLimit
-      ? "RATE_LIMIT: Groq free tier limit hit. Wait 60 seconds and try again, or set GROQ_MODEL=llama-3.1-8b-instant in Vercel for higher limits."
-      : `Failed to process message: ${msg.slice(0, 200)}`;
-    return NextResponse.json({ error }, { status: isRateLimit ? 429 : 500 });
+    const isRateLimit = msg.includes("RATE_LIMIT");
+    return NextResponse.json(
+      {
+        error: isRateLimit
+          ? "RATE_LIMIT: Wait 60 seconds and try again."
+          : `Failed: ${msg.slice(0, 200)}`,
+      },
+      { status: isRateLimit ? 429 : 500 }
+    );
   }
 }
