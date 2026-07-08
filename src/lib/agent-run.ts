@@ -82,7 +82,7 @@ export async function runLifeAgent(input: {
         level: input.level,
       }),
     },
-    ...(input.history ?? []).slice(-6).map((m) => ({
+    ...(input.history ?? []).map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     })),

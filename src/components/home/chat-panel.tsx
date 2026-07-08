@@ -40,6 +40,12 @@ export function ChatPanel() {
     const message = text.trim();
     if (!message || loading) return;
 
+    // Capture prior turns before adding the new user message (React state is async).
+    const priorHistory = chatHistory.slice(-20).map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
+
     addChatMessage({ role: "user", content: message });
     setInput("");
     setLoading(true);
@@ -55,10 +61,7 @@ export function ChatPanel() {
           streak,
           level,
           xp,
-          history: chatHistory.slice(-8).map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          history: priorHistory,
         }),
       });
       const data = await res.json();
