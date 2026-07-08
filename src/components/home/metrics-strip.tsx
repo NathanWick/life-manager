@@ -37,7 +37,8 @@ export function MetricsStrip() {
         ))}
       </div>
       <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
-        {goals.length} goals · {active} active quests
+        {goals.length} goal{goals.length === 1 ? "" : "s"} · {active} active
+        quest{active === 1 ? "" : "s"}
       </p>
     </div>
   );
