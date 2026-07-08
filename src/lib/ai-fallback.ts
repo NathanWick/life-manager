@@ -24,7 +24,8 @@ function extractGoalTitle(message: string): string | null {
   for (const p of patterns) {
     const m = message.match(p);
     if (m?.[1]) {
-      const title = m[1].replace(/[.!?].*$/, "").trim().slice(0, 80);
+      let title = m[1].replace(/[.!?].*$/, "").trim().slice(0, 80);
+      title = title.replace(/^to\s+/i, "").trim();
       if (title.length >= 3) return title.charAt(0).toUpperCase() + title.slice(1);
     }
   }
