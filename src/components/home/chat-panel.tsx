@@ -3,13 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useLifeQuest } from "@/hooks/use-lifequest";
 import { useMobileKeyboard } from "@/hooks/use-mobile-keyboard";
-import { applyAgentActions } from "@/lib/apply-agent-actions";
 import type { AgentAction } from "@/lib/agent-tools";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Sparkles, Target, Scroll, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 const STARTERS = [
   "My north star is to get healthier",
@@ -26,15 +21,13 @@ export function ChatPanel() {
     xp,
     chatHistory,
     addChatMessage,
-    addGoal,
-    addQuest,
+    applyAgentResult,
     hydrated,
   } = useLifeQuest();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { keyboardInset } = useMobileKeyboard();
 
   useEffect(() => {
@@ -44,6 +37,12 @@ export function ChatPanel() {
   const send = async (text: string) => {
     const message = text.trim();
     if (!message || loading) return;
+
+    // Capture prior turns before adding the new user message (React state is async).
+    const priorHistory = chatHistory.slice(-20).map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
 
     addChatMessage({ role: "user", content: message });
     setInput("");
@@ -60,53 +59,23 @@ export function ChatPanel() {
           streak,
           level,
           xp,
-          location: null,
-          history: chatHistory.slice(-8).map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          history: priorHistory,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
-      const applied = applyAgentActions(
-        (data.actions ?? []) as AgentAction[],
-        addGoal,
-        addQuest
-      );
-      if (applied.length > 0) {
-        const parts: string[] = [];
-        const g = applied.filter((a) => a.type === "create_goal").length;
-        const q = applied.filter((a) => a.type === "create_quest").length;
-        if (g) parts.push(`${g} goal${g > 1 ? "s" : ""}`);
-        if (q) parts.push(`${q} quest${q > 1 ? "s" : ""}`);
-        toast.success(`Added ${parts.join(" & ")}`);
-      }
-
-      addChatMessage({
-        role: "assistant",
+      applyAgentResult((data.actions ?? []) as AgentAction[], {
         content: data.content || "Here to help!",
-        appliedActions: applied.length ? applied : undefined,
       });
     } catch (err) {
-      const detail =
-        err instanceof Error ? err.message : "Unknown error";
-      const isRateLimit =
-        detail.includes("RATE_LIMIT") ||
-        detail.includes("429") ||
-        /rate limit/i.test(detail);
-      const friendly = isRateLimit
-        ? "Groq rate limit — wait about a minute, then try again. Or in Vercel set GROQ_MODEL to llama-3.1-8b-instant (higher free limits than Qwen)."
-        : detail.includes("model") && detail.includes("not exist")
-          ? "Wrong model name — set GROQ_MODEL to qwen/qwen3-32b in Vercel and redeploy."
-          : detail.includes("GROQ_API_KEY") || detail.includes("NO_PROVIDER")
-            ? "Add GROQ_API_KEY in Vercel (Production), redeploy, then try again."
-            : detail;
-      addChatMessage({
-        role: "assistant",
-        content: friendly,
-      });
+      const detail = err instanceof Error ? err.message : "Unknown error";
+      const friendly = detail.includes("RATE_LIMIT")
+        ? "Rate limit hit — wait a minute and try again."
+        : detail.includes("NO_PROVIDER") || detail.includes("GROQ")
+          ? "Add GROQ_API_KEY to enable full AI (local fallback still works)."
+          : detail;
+      addChatMessage({ role: "assistant", content: friendly });
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -114,28 +83,25 @@ export function ChatPanel() {
   };
 
   return (
-    <div className="flex flex-1 flex-col min-h-0 bg-background">
-      <div
-        ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3"
-      >
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
         {!hydrated ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
+          <p className="py-8 text-center text-sm text-muted-foreground">
             Loading…
           </p>
         ) : chatHistory.length === 0 ? (
           <div className="space-y-3 py-2">
-            <p className="text-sm text-muted-foreground text-center">
+            <p className="text-center text-sm text-muted-foreground">
               Tell me your north star or what to do today — I&apos;ll create
-              goals &amp; quests for you.
+              goals &amp; quests.
             </p>
-            <div className="flex flex-wrap gap-2 justify-center">
+            <div className="flex flex-wrap justify-center gap-2">
               {STARTERS.map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => send(s)}
-                  className="text-xs rounded-full border px-3 py-1.5 hover:bg-muted"
+                  className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-muted"
                 >
                   {s}
                 </button>
@@ -148,24 +114,10 @@ export function ChatPanel() {
               <div
                 key={msg.id}
                 className={cn(
-                  "flex gap-2",
-                  msg.role === "user" && "flex-row-reverse"
+                  "flex",
+                  msg.role === "user" && "justify-end"
                 )}
               >
-                <div
-                  className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                    msg.role === "assistant"
-                      ? "bg-primary/15 text-primary"
-                      : "bg-muted"
-                  )}
-                >
-                  {msg.role === "assistant" ? (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  ) : (
-                    <User className="h-3.5 w-3.5" />
-                  )}
-                </div>
                 <div
                   className={cn(
                     "max-w-[88%] space-y-1",
@@ -174,7 +126,7 @@ export function ChatPanel() {
                 >
                   <div
                     className={cn(
-                      "rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap inline-block text-left",
+                      "inline-block rounded-2xl px-3 py-2 text-left text-sm whitespace-pre-wrap",
                       msg.role === "user"
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted"
@@ -183,26 +135,23 @@ export function ChatPanel() {
                     {msg.content}
                   </div>
                   {msg.appliedActions?.map((a, i) => (
-                    <Badge
+                    <span
                       key={i}
-                      variant="secondary"
-                      className="text-[10px] mr-1"
+                      className="mr-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground"
                     >
-                      {a.type === "create_goal" ? (
-                        <Target className="h-2.5 w-2.5 mr-0.5" />
-                      ) : (
-                        <Scroll className="h-2.5 w-2.5 mr-0.5" />
-                      )}
-                      {a.title}
-                    </Badge>
+                      {a.type === "create_goal"
+                        ? "Goal"
+                        : a.type === "update_quest"
+                          ? "Updated"
+                          : "Quest"}
+                      : {a.title}
+                    </span>
                   ))}
                 </div>
               </div>
             ))}
             {loading && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Thinking…
-              </p>
+              <p className="text-xs text-muted-foreground">Thinking…</p>
             )}
             <div ref={endRef} className="h-1" />
           </div>
@@ -210,7 +159,7 @@ export function ChatPanel() {
       </div>
 
       <form
-        className="shrink-0 flex gap-2 border-t bg-background px-3 pt-3"
+        className="flex shrink-0 gap-2 border-t border-border px-3 pt-3"
         style={{
           paddingBottom: `calc(0.75rem + ${keyboardInset}px + env(safe-area-inset-bottom, 0px))`,
         }}
@@ -227,21 +176,15 @@ export function ChatPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Message your Life Agent…"
-          className="flex-1 min-w-0 h-11 rounded-xl border border-input bg-background px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onFocus={() => {
-            setTimeout(() => {
-              endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-            }, 300);
-          }}
+          className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-background px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <Button
+        <button
           type="submit"
-          size="icon"
-          className="h-11 w-11 shrink-0 rounded-xl"
           disabled={loading || !input.trim()}
+          className="h-11 shrink-0 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
-          <Send className="h-4 w-4" />
-        </Button>
+          Send
+        </button>
       </form>
     </div>
   );

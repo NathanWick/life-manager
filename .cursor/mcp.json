@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "lifequest": {
-      "command": "npx",
-      "args": ["tsx", "scripts/lifequest-mcp-stdio.mts"]
-    }
-  }
-}

@@ -1,6 +1,6 @@
 # LifeQuest
 
-A gamified life-goal tracker built with Next.js 15 (App Router, Turbopack), TypeScript, Tailwind CSS v4, and shadcn/ui.
+A minimal life-goal tracker: metrics + quests + AI chat. Built with Next.js 15 (App Router, Turbopack), TypeScript, and Tailwind CSS v4.
 
 ## Cursor Cloud specific instructions
 
@@ -26,6 +26,5 @@ The chat agent (`/api/chat`) uses Groq, OpenRouter, or OpenAI (checked in that o
 
 ### Key gotchas
 
-- The PWA service worker is disabled in development (`disable: process.env.NODE_ENV === "development"` in `next.config.ts`).
-- The build emits a Turbopack/Webpack warning — this is harmless and expected.
-- The `sonner` package provides toast notifications; ensure it's installed (`npm install` covers it).
+- Single page only (`/`) — no goals/quests/agent routes.
+- The build may emit a Turbopack warning — harmless and expected.
