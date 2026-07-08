@@ -41,6 +41,10 @@ function findActiveQuest(
   const lower = message.toLowerCase();
   const byName = active.find((q) => lower.includes(q.title.toLowerCase()));
   if (byName) return byName;
+  if (/\bfirst\b/i.test(message)) return active[0];
+  if (/\b(second|last|other)\b/i.test(message)) {
+    return active[active.length - 1];
+  }
   if (
     /\b(that|this|it|the quest)\b/i.test(message) ||
     /\b(double|modify|update|change|harder|easier|xp)\b/i.test(message)
